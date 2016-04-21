@@ -15,7 +15,7 @@ class InterferenceModel(PhysicsModel):
         "Return the name of a RooAbsReal to scale this yield by or the two special values 1 and 0 (don't scale, and set to zero)"
         if not self.DC.isSignal[process]:
             return 1
-        if '_neg_' in process:
+        if '_neg' in process:
             print 'Scaling', process, 'with negative signal strength'
             return 'r_neg'
         print 'Scaling', process, 'with signal strength'

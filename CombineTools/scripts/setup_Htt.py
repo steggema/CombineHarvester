@@ -8,8 +8,8 @@ cb = ch.CombineHarvester()
 auxiliaries  = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/CombineTools/scripts/'
 aux_shapes   = auxiliaries 
 
-# for mode in ['scalar']:#, 'pseudoscalar']:
-for mode in ['pseudoscalar']:#, 'pseudoscalar']:
+for mode in ['scalar']:#, 'pseudoscalar']:
+# for mode in ['pseudoscalar']:#, 'pseudoscalar']:
 
   procs = {
     'sig'  : ['S0_{mode}_M'.format(mode=mode), 'S0_neg_{mode}_M'.format(mode=mode)],
@@ -60,10 +60,11 @@ for mode in ['pseudoscalar']:#, 'pseudoscalar']:
 
 
   # cb.cp().process(procs['sig']).AddSyst(cb, 'QCDscale_tHq', 'lnN', ch.SystMap()(1.019))
-  cb.cp().process(['t_bar_t__correct']).AddSyst(cb, 'QCDscale_tt', 'lnN', ch.SystMap()(1.07))
-  cb.cp().process(['Single_t']).AddSyst(cb, 'QCDscale_singlet', 'lnN', ch.SystMap()(1.105))
-  cb.cp().process(['W_jets']).AddSyst(cb, 'QCDscale_w4jets', 'lnN', ch.SystMap()(1.3))
-  cb.cp().process(['Z_jets']).AddSyst(cb, 'QCDscale_VV', 'lnN', ch.SystMap()(1.036))
+  cb.cp().process(['t_bar_t__correct']).AddSyst(cb, 'QCDscale_tt', 'lnN', ch.SystMap()(1.053))
+  cb.cp().process(['Single_t']).AddSyst(cb, 'QCDscale_singlet', 'lnN', ch.SystMap()(1.10))
+  cb.cp().process(['W_jets']).AddSyst(cb, 'QCDscale_w4jets', 'lnN', ch.SystMap()(1.2))
+  cb.cp().process(['Z_jets']).AddSyst(cb, 'QCDscale_VV', 'lnN', ch.SystMap()(1.2))
+  cb.cp().process(['Diboson']).AddSyst(cb, 'QCDscale_Diboson', 'lnN', ch.SystMap()(1.05))
 
   cb.cp().AddSyst(
       cb, 'pdf_gg', 'lnN', ch.SystMap('process')
@@ -93,9 +94,11 @@ for mode in ['pseudoscalar']:#, 'pseudoscalar']:
   # bbb.SetAddThreshold(0.1).SetFixNorm(True)
   # bbb.AddBinByBin(cb.cp().process(['reducible']), cb)
 
-  norm_initial = 306.5 # from Markus
 
-  cb.cp().process(['S0_neg_{mode}_M'.format(mode=mode), 'S0_{mode}_M'.format(mode=mode)]).ForEachProc(lambda p: p.set_rate(p.rate()/norm_initial))
+  # for mass in masses:
+  #   norm_initial = norms[mode][int(mass)] 
+
+  #   cb.cp().process(['S0_neg_{mode}_M{mass}'.format(mode=mode, mass=mass), 'S0_{mode}_M{mass}'.format(mode=mode, mass=mass)]).ForEachProc(lambda p: p.set_rate(p.rate()/norm_initial))
 
   print '>> Setting standardised bin names...'
   ch.SetStandardBinNames(cb)
@@ -109,8 +112,10 @@ for mode in ['pseudoscalar']:#, 'pseudoscalar']:
 print '>> Done!'
 
 # Post instructions:
-# > combineTool.py -M T2W -i {scalar,pseudoscalar}/* -o workspace.root -P CombineHarvester.CombineTools.InterferenceModel:interferenceModel
-# > combineTool.py -M Asymptotic -d */*/workspace.root --there -n .limit --parallel 4
-# > combineTool.py -M CollectLimits */*/*.limit.* --use-dirs -o limits.json
+'''
+combineTool.py -M T2W -i {scalar,pseudoscalar}/* -o workspace.root -P CombineHarvester.CombineTools.InterferenceModel:interferenceModel
+combineTool.py -M Asymptotic -d */*/workspace.root --there -n .limit --parallel 4
+combineTool.py -M CollectLimits */*/*.limit.* --use-dirs -o limits.json
+'''
 
 
