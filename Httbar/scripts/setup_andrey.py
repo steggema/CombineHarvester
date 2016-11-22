@@ -8,12 +8,9 @@ cb = ch.CombineHarvester()
 auxiliaries = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/'
 aux_shapes = auxiliaries
 
-addBBB = False
+addBBB = True
 
 masses = ['400', '500', '600', '750']
-
-# for mode in ['scalar']:#, 'pseudoscalar']:
-
 
 width = '5'
 
@@ -111,9 +108,8 @@ for mode in ['A']:
     #   cb.cp().process(['S0_neg_{mode}_M{mass}'.format(mode=mode, mass=mass), 'S0_{mode}_M{mass}'.format(mode=mode, mass=mass)]).ForEachProc(lambda p: p.set_rate(p.rate()/norm_initial))
 
     if addBBB:
-        bbb = ch.BinByBinFactory().SetAddThreshold(0.).SetFixNorm(False)
-        bbb.MergeBinErrors(cb.cp().backgrounds())
-        bbb.AddBinByBin(cb.cp().backgrounds(), cb)
+        bbb = ch.BinByBinFactory().SetAddThreshold(0.).SetFixNorm(False).SetMergeThreshold(0.5)
+        bbb.MergeAndAdd(cb.cp().backgrounds(), cb)
 
     print '>> Setting standardised bin names...'
     ch.SetStandardBinNames(cb)
@@ -123,7 +119,7 @@ for mode in ['A']:
                            # writer = ch.CardWriter('$TAG/$ANALYSIS_$CHANNEL_$BINID_$ERA.txt',
                            '$TAG/$ANALYSIS_$CHANNEL.input.root')
     # writer.SetVerbosity(100)
-    writer.WriteCards('output/{mode}'.format(mode=mode), cb)
+    # writer.WriteCards('output/{mode}'.format(mode=mode), cb)
     print 'Try writing cards...'
     # import ROOT
     # f_out = ROOT.TFile('andrey_out.root', 'RECREATE')
@@ -134,13 +130,35 @@ print '>> Done!'
 
 # Post instructions:
 '''
-combineTool.py -M T2W -i {scalar,pseudoscalar}/* -o workspace.root -P CombineHarvester.CombineTools.InterferenceModel:interferenceModel
+### Create datacards
+cd output
+combineTool.py -M T2W -i A/* -o workspace.root -P CombineHarvester.CombineTools.InterferenceModel:interferenceModel
+# Use {A,H} instead of directory A to run both with one command
+
+### Pulls
+
+# Asimov pulls
+combine -M MaxLikelihoodFit A/400/workspace.root -t -1 --expectSignal 0.
+python $CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py -a -A -f text -g nuisances_bonly.root mlfit.root > nuisances_bonly.txt
+combine -M MaxLikelihoodFit A/400/workspace.root -t -1 --expectSignal 2.
+python $CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py -a -A -f text -g nuisances_2splusb.root mlfit.root > nuisances_2splusb.txt
+
+# B-only pulls, avoiding unblinding
+
+# Measure ttbar cross section and make pulls
+combine -M MaxLikelihoodFit A/400/workspace.root --redefineSignalPOIs QCDscale_ttbar 
+python $CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py -a -A -f text -g nuisances.root mlfit.root
+
+# Expected likelihood scan
+combine A/400/workspace.root -M MultiDimFit --rMin 0 --rMax 2 --robustFit on --points 200 --algo=grid -t -1 --expectSignal=1.
+
+
 combineTool.py -M Asymptotic -d */*/workspace.root --there -n .limit --parallel 4
 combineTool.py -M CollectLimits */*/*.limit.* --use-dirs -o limits.json
-plotLimits.py --y-title="Coupling modifier" --x-title="M_{A} (GeV)" limits_default.json 
+plotLimits.py --y-title="Coupling modifier" --x-title="M_{A} (GeV)" limits_A.json 
 
-combineTool.py -M Impacts -d workspace.root -m 600 --doInitialFit --robustFit 1
-combineTool.py -M Impacts -d workspace.root -m 600 --robustFit 1 --doFits
+combineTool.py -M Impacts -d workspace.root -m 400 --doInitialFit --robustFit 1
+combineTool.py -M Impacts -d workspace.root -m 400 --robustFit 1 --doFits
 # combineTool.py -M ImpactsFromScans -d workspace.root -m 600 --robustFit 1 --doFits  --robustFit on
 combineTool.py -M Impacts -d workspace.root -m 600  -o impacts.json
 plotImpacts.py -i impacts.json -o impacts
