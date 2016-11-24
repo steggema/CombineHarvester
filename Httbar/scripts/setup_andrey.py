@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+import os
+
+from ROOT import RooWorkspace, TFile, RooRealVar
 
 import CombineHarvester.CombineTools.ch as ch
-import os
+from CombineHarvester.CombinePdfs.morphing import BuildRooMorphing
 
 cb = ch.CombineHarvester()
 
@@ -13,6 +16,8 @@ addBBB = True
 masses = ['400', '500', '600', '750']
 
 width = '5'
+
+doMorph = True
 
 for mode in ['A']:
 
@@ -115,6 +120,29 @@ for mode in ['A']:
     ch.SetStandardBinNames(cb)
     cb.PrintAll()
 
+    if doMorph:
+        mA = RooRealVar('mA', 'mA', 400., 750.);
+        mA.setConstant(True)
+
+        f_debug = TFile('morph_debug.root', 'RECREATE')
+        print 'Try to morph between masses'
+        ws = RooWorkspace('httbar', 'httbar')
+        bins = cb.bin_set()
+        for bin in bins:
+            for proc in procs['sig']:
+                BuildRooMorphing(ws, cb, bin, proc, mA, "norm", True, True, False, f_debug)
+
+        f_debug.Close()
+        cb.AddWorkspace(ws, False)
+        cb.cp().process(procs['sig']).ExtractPdfs(cb, "htt", "$BIN_$PROCESS_morph", "")
+
+        #BuildRooMorphing(ws, cb, bin, process, mass_var, norm_postfix='norm', allow_morph=True, verbose=False, force_template_limit=False, file=None)
+        # void BuildRooMorphing(RooWorkspace& ws, CombineHarvester& cb,
+        #               std::string const& bin, std::string const& process,
+        #               RooAbsReal& mass_var, std::string norm_postfix,
+        #               bool allow_morph, bool verbose, bool force_template_limit, TFile * file)
+
+
     writer = ch.CardWriter('$TAG/$MASS/$ANALYSIS_$CHANNEL_$BINID.txt',
                            # writer = ch.CardWriter('$TAG/$ANALYSIS_$CHANNEL_$BINID_$ERA.txt',
                            '$TAG/$ANALYSIS_$CHANNEL.input.root')
@@ -157,9 +185,9 @@ combineTool.py -M Asymptotic -d */*/workspace.root --there -n .limit --parallel 
 combineTool.py -M CollectLimits */*/*.limit.* --use-dirs -o limits.json
 plotLimits.py --y-title="Coupling modifier" --x-title="M_{A} (GeV)" limits_A.json 
 
-combineTool.py -M Impacts -d workspace.root -m 400 --doInitialFit --robustFit 1
-combineTool.py -M Impacts -d workspace.root -m 400 --robustFit 1 --doFits
-# combineTool.py -M ImpactsFromScans -d workspace.root -m 600 --robustFit 1 --doFits  --robustFit on
-combineTool.py -M Impacts -d workspace.root -m 600  -o impacts.json
+combineTool.py -M Impacts -d A/400/workspace.root -m 400 --doInitialFit --robustFit 1
+combineTool.py -M Impacts -d A/400/workspace.root -m 400 --robustFit 1 --doFits
+# combineTool.py -M ImpactsFromScans -d workspace.root -m 400 --robustFit 1 --doFits  --robustFit on
+combineTool.py -M Impacts -d A/400/workspace.root -m 400  -o impacts.json
 plotImpacts.py -i impacts.json -o impacts
 '''
