@@ -15,7 +15,7 @@ addBBB = True
 
 masses = ['400', '500', '600', '750']
 
-width = '5'
+width = '5' # in percent
 
 doMorph = True
 
@@ -116,25 +116,24 @@ for mode in ['A']:
         bbb = ch.BinByBinFactory().SetAddThreshold(0.).SetFixNorm(False).SetMergeThreshold(0.5)
         bbb.MergeAndAdd(cb.cp().backgrounds(), cb)
 
-    print '>> Setting standardised bin names...'
-    ch.SetStandardBinNames(cb)
-    cb.PrintAll()
-
     if doMorph:
-        mA = RooRealVar('mA', 'mA', 400., 750.);
+        mA = RooRealVar('MH', 'MH', 400., 750.);
         mA.setConstant(True)
 
-        f_debug = TFile('morph_debug.root', 'RECREATE')
+        mass_debug = False
+        if mass_debug:
+            f_debug = TFile('morph_debug.root', 'RECREATE')
         print 'Try to morph between masses'
         ws = RooWorkspace('httbar', 'httbar')
         bins = cb.bin_set()
         for bin in bins:
             for proc in procs['sig']:
-                BuildRooMorphing(ws, cb, bin, proc, mA, "norm", True, True, False, f_debug)
+                BuildRooMorphing(ws, cb, bin, proc, mA, "norm", True, True, False, f_debug if mass_debug else None)
 
-        f_debug.Close()
+        if mass_debug:
+            f_debug.Close()
         cb.AddWorkspace(ws, False)
-        cb.cp().process(procs['sig']).ExtractPdfs(cb, "htt", "$BIN_$PROCESS_morph", "")
+        cb.cp().process(procs['sig']).ExtractPdfs(cb, "httbar", "$BIN_$PROCESS_morph", "")
 
         #BuildRooMorphing(ws, cb, bin, process, mass_var, norm_postfix='norm', allow_morph=True, verbose=False, force_template_limit=False, file=None)
         # void BuildRooMorphing(RooWorkspace& ws, CombineHarvester& cb,
@@ -142,13 +141,21 @@ for mode in ['A']:
         #               RooAbsReal& mass_var, std::string norm_postfix,
         #               bool allow_morph, bool verbose, bool force_template_limit, TFile * file)
 
+    print '>> Setting standardised bin names...'
+    ch.SetStandardBinNames(cb)
+    # cb.PrintAll()
 
-    writer = ch.CardWriter('$TAG/$MASS/$ANALYSIS_$CHANNEL_$BINID.txt',
-                           # writer = ch.CardWriter('$TAG/$ANALYSIS_$CHANNEL_$BINID_$ERA.txt',
-                           '$TAG/$ANALYSIS_$CHANNEL.input.root')
-    # writer.SetVerbosity(100)
-    # writer.WriteCards('output/{mode}'.format(mode=mode), cb)
-    print 'Try writing cards...'
+    if not doMorph:
+        writer = ch.CardWriter('$TAG/$MASS/$ANALYSIS_$CHANNEL_$BINID.txt',
+                               # writer = ch.CardWriter('$TAG/$ANALYSIS_$CHANNEL_$BINID_$ERA.txt',
+                               '$TAG/$ANALYSIS_$CHANNEL.input.root')
+    else:
+        writer = ch.CardWriter('$TAG/MORPH/$ANALYSIS_$CHANNEL_$BINID.txt',
+                               '$TAG/$ANALYSIS_$CHANNEL.input.root')
+    writer.SetWildcardMasses([])
+    writer.SetVerbosity(100)
+    writer.WriteCards('output/{mode}_{width}'.format(mode=mode, width=width), cb)
+    print 'Writing cards...'
     # import ROOT
     # f_out = ROOT.TFile('andrey_out.root', 'RECREATE')
     # cb.WriteDatacard("andrey_out.txt", 'andrey_out.root')
