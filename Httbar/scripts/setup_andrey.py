@@ -167,8 +167,16 @@ print '>> Done!'
 '''
 ### Create datacards
 cd output
-combineTool.py -M T2W -i A/* -o workspace.root -P CombineHarvester.CombineTools.InterferenceModel:interferenceModel
+combineTool.py -M T2W -i A_5/ -o workspace.root -P CombineHarvester.CombineTools.InterferenceModel:interferenceModel
 # Use {A,H} instead of directory A to run both with one command
+
+### Expected limits for range of masses
+
+
+combineTool.py -M Asymptotic -d A_5/MORPH/workspace.root --there -n .limit --parallel 4 -m "400:750:25" -t -1 --minimizerTolerance=0.0001 --minimizerStrategy=2
+combineTool.py -M CollectLimits A_5/MORPH/*.limit.* --use-dirs -o limits.json
+plotLimits.py --y-title="Coupling modifier" --x-title="M_{A} (GeV)" limits_MORPH.json
+
 
 ### Pulls
 
