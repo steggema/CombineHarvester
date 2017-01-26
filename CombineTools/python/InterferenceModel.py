@@ -25,7 +25,7 @@ class InterferenceModel(PhysicsModel):
                 return 'r_neg_tothe4'
             else:
                 print 'Scaling', process, 'with negative signal strength squared'
-                return 'r_neg_sqw'
+                return 'r_neg_sq'
         elif '-sgn' in process:
             print 'Scaling', process, 'with signal strength to the 4'
             return 'r_tothe4'
