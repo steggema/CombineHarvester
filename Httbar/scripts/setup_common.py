@@ -54,7 +54,7 @@ def prepareLeptonPlusJets(cb, procs, in_file, masses=['400', '500', '600', '750'
         LnNUnc(['sChannel'], 'CMS_httbar_sChannelNorm_13TeV', 1.20),
         LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.5),
         LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5),
-        LnNUnc(['TTV'], 'CMS_httbar_ZNorm_13TeV', 1.2),
+        LnNUnc(['TTV'], 'CMS_httbar_TTVNorm_13TeV', 1.2),
         LnNUnc(['QCDmujets'], 'CMS_httbar_QCDmujetsNorm', 2.0),
         LnNUnc(['QCDejets'], 'CMS_httbar_QCDejetsNorm', 2.0),
     ]
