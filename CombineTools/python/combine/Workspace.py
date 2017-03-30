@@ -21,7 +21,7 @@ class PrintWorkspace(CombineToolBase):
             'input', help='The input specified as FILE:WORKSPACE')
 
     def run_method(self):
-        ws_in = args.input.split(':')
+        ws_in = self.args.input.split(':')
         f = ROOT.TFile(ws_in[0])
         ws = f.Get(ws_in[1])
         ws.Print()
@@ -64,6 +64,6 @@ class ModifyDataSet(CombineToolBase):
                 data = f_d.Get(ws_d[1]).data(ws_d[2])
             if len(ws_out) == 3:
                 data.SetName(ws_out[2])
-            getattr(ws, 'import')(data)
+            getattr(ws, 'import')(data, ROOT.RooCmdArg())
         ws.SetName(ws_out[1])
         ws.writeToFile(ws_out[0])
