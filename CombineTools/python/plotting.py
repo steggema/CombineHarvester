@@ -677,21 +677,21 @@ def MakeErrorBand(LowerGraph, UpperGraph):
     return errorBand
 
 
-def LimitTGraphFromJSON(js, label):
+def LimitTGraphFromJSON(js, label, mapping=lambda x: x):
     xvals = []
     yvals = []
     for key in js:
         xvals.append(float(key))
-        yvals.append(js[key][label])
+        yvals.append(mapping(js[key][label]))
     graph = R.TGraph(len(xvals), array('d', xvals), array('d', yvals))
     graph.Sort()
     return graph
 
 
-def LimitTGraphFromJSONFile(jsfile, label):
+def LimitTGraphFromJSONFile(jsfile, label, mapping=lambda x: x):
     with open(jsfile) as jsonfile:
         js = json.load(jsonfile)
-    return LimitTGraphFromJSON(js, label)
+    return LimitTGraphFromJSON(js, label, mapping)
 
 def ToyTGraphFromJSON(js, label):
     xvals = []
@@ -720,35 +720,35 @@ def ToyTGraphFromJSONFile(jsfile, label):
         js = json.load(jsonfile)
     return ToyTGraphFromJSON(js, label)
 
-def LimitBandTGraphFromJSON(js, central, lo, hi):
+def LimitBandTGraphFromJSON(js, central, lo, hi, mapping=lambda x: x):
     xvals = []
     yvals = []
     yvals_lo = []
     yvals_hi = []
     for key in js:
         xvals.append(float(key))
-        yvals.append(js[key][central])
-        yvals_lo.append(js[key][central] - js[key][lo])
-        yvals_hi.append(js[key][hi] - js[key][central])
+        yvals.append(mapping(js[key][central]))
+        yvals_lo.append(mapping(js[key][central]) - mapping(js[key][lo]))
+        yvals_hi.append(mapping(js[key][hi]) - mapping(js[key][central]))
     graph = R.TGraphAsymmErrors(len(xvals), array('d', xvals), array('d', yvals), array(
         'd', [0]), array('d', [0]), array('d', yvals_lo), array('d', yvals_hi))
     graph.Sort()
     return graph
 
 
-def StandardLimitsFromJSONFile(json_file, draw=['obs', 'exp0', 'exp1', 'exp2']):
+def StandardLimitsFromJSONFile(json_file, draw=['obs', 'exp0', 'exp1', 'exp2'], mapping=lambda x: x):
     graphs = {}
     data = {}
     with open(json_file) as jsonfile:
         data = json.load(jsonfile)
     if 'obs' in draw:
-        graphs['obs'] = LimitTGraphFromJSON(data, 'obs')
+        graphs['obs'] = LimitTGraphFromJSON(data, 'obs', mapping)
     if 'exp0' in draw or 'exp' in draw:
-        graphs['exp0'] = LimitTGraphFromJSON(data, 'exp0')
+        graphs['exp0'] = LimitTGraphFromJSON(data, 'exp0', mapping)
     if 'exp1' in draw or 'exp' in draw:
-        graphs['exp1'] = LimitBandTGraphFromJSON(data, 'exp0', 'exp-1', 'exp+1')
+        graphs['exp1'] = LimitBandTGraphFromJSON(data, 'exp0', 'exp-1', 'exp+1', mapping)
     if 'exp2' in draw or 'exp' in draw:
-        graphs['exp2'] = LimitBandTGraphFromJSON(data, 'exp0', 'exp-2', 'exp+2')
+        graphs['exp2'] = LimitBandTGraphFromJSON(data, 'exp0', 'exp-2', 'exp+2', mapping)
     return graphs
 
 

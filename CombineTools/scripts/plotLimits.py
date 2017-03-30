@@ -2,6 +2,8 @@
 import ROOT
 import CombineHarvester.CombineTools.plotting as plot
 import argparse
+from math import *
+from pdb import set_trace
 # import CombineHarvester.CombineTools.maketable as maketable
 
 parser = argparse.ArgumentParser()
@@ -39,10 +41,14 @@ parser.add_argument(
 parser.add_argument(
     '--pad-style', default=None, help="""Extra style options for the pad, e.g. Grid=(1,1)""")
 parser.add_argument(
+    '--grid', action='store_true', help="""Extra style options for the pad, e.g. Grid=(1,1)""")
+parser.add_argument(
+    '--mapping', default='lambda x: x', help="""mapping for the obtained limit values""")
+parser.add_argument(
     '--auto-style', nargs='?', const='', default=None, help="""Take line colors and styles from a pre-defined list""")
 parser.add_argument('--table_vals', help='Amount of values to be written in a table for different masses', default=10)
 args = parser.parse_args()
-
+mapping = eval(args.mapping)
 
 def DrawAxisHists(pads, axis_hists, def_pad=None):
     for i, pad in enumerate(pads):
@@ -69,7 +75,10 @@ else:
 # Set the style options of the pads
 for padx in pads:
     # Use tick marks on oppsite axis edges
-    plot.Set(padx, Tickx=1, Ticky=1, Logx=args.logx)
+    plot.Set(padx, Tickx=1, Ticky=1, Logx=args.logx)		
+    if args.grid:
+        padx.SetGridx()				
+        padx.SetGridy()				
     if args.pad_style is not None:
         settings = {x.split('=')[0]: eval(x.split('=')[1]) for x in args.pad_style.split(',')}
         print 'Applying style options to the TPad(s):'
@@ -105,7 +114,7 @@ for src in args.input:
     file = splitsrc[0]
     # limit.json => Draw as full obs + exp limit band
     if len(splitsrc) == 1:
-        graph_sets.append(plot.StandardLimitsFromJSONFile(file, args.show.split(',')))
+        graph_sets.append(plot.StandardLimitsFromJSONFile(file, args.show.split(','), mapping))
         if axis is None:
             axis = plot.CreateAxisHists(len(pads), graph_sets[-1].values()[0], True)
             DrawAxisHists(pads, axis, pads[0])
