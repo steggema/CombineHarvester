@@ -131,6 +131,7 @@ for mode in modes:
 		
 		print '>> Extracting histograms from input root files...'
 		in_file = aux_shapes + 'templates_%s.root' % args.jobid #1D_161110
+		
 		cb.cp().backgrounds().ExtractShapes(
 			in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC')
 		cb.cp().signals().ExtractShapes(
@@ -182,19 +183,24 @@ for mode in modes:
 		
 		if not doMorph:
 			writer = ch.CardWriter('$TAG/$MASS/$ANALYSIS_$CHANNEL_$BINID.txt',
-								   # writer = ch.CardWriter('$TAG/$ANALYSIS_$CHANNEL_$BINID_$ERA.txt',
 								   '$TAG/$ANALYSIS_$CHANNEL.input.root')
 		else:
 			writer = ch.CardWriter('$TAG/MORPH/$ANALYSIS_$CHANNEL_$BINID.txt',
 								   '$TAG/$ANALYSIS_$CHANNEL.input.root')
 		#writer.SetWildcardMasses([])
+		set_trace()
 		writer.SetVerbosity(100)
-		writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=args.jobid, mode=mode, width=width), cb)
 		print 'Writing cards...'
-		# import ROOT
-		# f_out = ROOT.TFile('andrey_out.root', 'RECREATE')
-		# cb.WriteDatacard("andrey_out.txt", 'andrey_out.root')
-		# writer.WriteCards('output/andrey_cards/', cb)
+		writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=args.jobid, mode=mode, width=width), cb)
+		#writer.WriteCards('output/{mode}_{width}'.format(mode=mode, width=width), cb)
+		## import ROOT
+		## dirname = 'output{jobid}/{mode}_{width}'.format(jobid=args.jobid, mode=mode, width=width)
+		## if os.path.exists(dirname):
+		## 	os.makedirs(dirname)
+		## f_out = ROOT.TFile('%s/httbar.input.root', 'RECREATE')
+		## split = cb.cp().mass(["*"])
+		## split.WriteDatacard(dirname + "/httbar.txt", f_out)
+		## f_out.Close()
 
 print '>> Done!'
 
