@@ -47,6 +47,7 @@ for mode in modes:
 			cats.append((len(cats), 'mujets'))
 		if args.limit == 'electrons' or args.limit == 'cmb':
 			cats.append((len(cats), 'ejets'))
+		cats = [(0, 'mujets'), (1, 'ejets')]
 		cat_to_id = {a:b for b, a in cats}
 		
 		cb.AddObservations(['*'], ['httbar'], ["8TeV"], [''], cats)
@@ -136,17 +137,6 @@ for mode in modes:
 			in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC')
 		cb.cp().signals().ExtractShapes(
 			in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC')
-		# in_file, '$BIN/$PROCESS', '$BIN/$PROCESS__$SYSTEMATIC')
-		
-		# print '>> Generating bbb uncertainties...'
-		# bbb = ch.BinByBinFactory()
-		# bbb.SetAddThreshold(0.1).SetFixNorm(True)
-		# bbb.AddBinByBin(cb.cp().process(['reducible']), cb)
-		
-		# for mass in masses:
-		#   norm_initial = norms[mode][int(mass)]
-		
-		#   cb.cp().process(['S0_neg_{mode}_M{mass}'.format(mode=mode, mass=mass), 'S0_{mode}_M{mass}'.format(mode=mode, mass=mass)]).ForEachProc(lambda p: p.set_rate(p.rate()/norm_initial))
 		
 		if addBBB:
 			bbb = ch.BinByBinFactory().SetAddThreshold(0.).SetFixNorm(False).SetMergeThreshold(0.5)
@@ -170,13 +160,7 @@ for mode in modes:
 				f_debug.Close()
 			cb.AddWorkspace(ws, False)
 			cb.cp().process(procs['sig']).ExtractPdfs(cb, "httbar", "$BIN_$PROCESS_morph", "")
-		
-			#BuildRooMorphing(ws, cb, bin, process, mass_var, norm_postfix='norm', allow_morph=True, verbose=False, force_template_limit=False, file=None)
-			# void BuildRooMorphing(RooWorkspace& ws, CombineHarvester& cb,
-			#			   std::string const& bin, std::string const& process,
-			#			   RooAbsReal& mass_var, std::string norm_postfix,
-			#			   bool allow_morph, bool verbose, bool force_template_limit, TFile * file)
-		
+				
 		print '>> Setting standardised bin names...'
 		ch.SetStandardBinNames(cb)
 		#cb.PrintAll()
@@ -185,22 +169,12 @@ for mode in modes:
 			writer = ch.CardWriter('$TAG/$MASS/$ANALYSIS_$CHANNEL_$BINID.txt',
 								   '$TAG/$ANALYSIS_$CHANNEL.input.root')
 		else:
-			writer = ch.CardWriter('$TAG/MORPH/$ANALYSIS_$CHANNEL_$BINID.txt',
+			writer = ch.CardWriter('$TAG/000/$ANALYSIS_$CHANNEL_$BINID.txt',
 								   '$TAG/$ANALYSIS_$CHANNEL.input.root')
-		#writer.SetWildcardMasses([])
-		set_trace()
+		writer.SetWildcardMasses([])
 		writer.SetVerbosity(100)
 		print 'Writing cards...'
 		writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=args.jobid, mode=mode, width=width), cb)
-		#writer.WriteCards('output/{mode}_{width}'.format(mode=mode, width=width), cb)
-		## import ROOT
-		## dirname = 'output{jobid}/{mode}_{width}'.format(jobid=args.jobid, mode=mode, width=width)
-		## if os.path.exists(dirname):
-		## 	os.makedirs(dirname)
-		## f_out = ROOT.TFile('%s/httbar.input.root', 'RECREATE')
-		## split = cb.cp().mass(["*"])
-		## split.WriteDatacard(dirname + "/httbar.txt", f_out)
-		## f_out.Close()
 
 print '>> Done!'
 
