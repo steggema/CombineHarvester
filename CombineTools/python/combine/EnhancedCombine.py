@@ -38,6 +38,10 @@ class EnhancedCombine(CombineToolBase):
                            help='Name used to label the combine output file, can be modified by other options')
         group.add_argument(
             '--setPhysicsModelParameterRanges', help='Some other options will modify or add to the list of parameter ranges')
+        group.add_argument(
+            '--run', choices=['both', 'observed', 'expected', 'blind', ''], default='', help='what and how to run')
+        group.add_argument(
+            '--freezeNuisances', default='', help='coma-separated list of nuisances to freeze')
 
 
     def attach_args(self, group):
@@ -115,6 +119,12 @@ class EnhancedCombine(CombineToolBase):
 
         current_ranges = self.args.setPhysicsModelParameterRanges
         put_back_ranges = current_ranges is not None
+
+        if self.args.run:
+            self.passthru.extend(['--run', self.args.run])
+
+        if self.args.freezeNuisances:
+            self.passthru.extend(['--freezeNuisances=%s' % self.args.freezeNuisances])
 
         if self.args.boundlist is not None:
             # We definitely don't need to put the parameter ranges back
