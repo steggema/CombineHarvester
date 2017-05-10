@@ -6,7 +6,7 @@ parser = ArgumentParser()
 parser.add_argument('jobid')
 parser.add_argument('--limit' , choices=['electrons', 'muons', 'cmb'], help='choose leptonic decay type', default='cmb')
 parser.add_argument('--masses', default='400,500,600,750', help='coma separated list of masses')
-parser.add_argument('--widths', default='5,10,25,50', help='coma separated list of widths')
+parser.add_argument('--widths', default='2p5,5,10,25,50', help='coma separated list of widths')
 parser.add_argument('--parity', default='A,H', help='coma separated list of parity (A,H only)')
 parser.add_argument('--noBBB', action='store_true')
 parser.add_argument('--noMorph', action='store_true')
@@ -93,20 +93,7 @@ for mode in modes:
 		# Experiment
 		cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
 			cb, 'lumi', 'lnN', ch.SystMap()(1.058))
-		
-		cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
-			cb, 'CMS_eff_trigger_m', 'lnN', ch.SystMap('bin_id')([cat_to_id['mujets']], 1.02))
-		
-		cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
-			cb, 'CMS_eff_trigger_e', 'lnN', ch.SystMap('bin_id')([cat_to_id['ejets']], 1.02))
-		
-		if args.limit == 'muons' or args.limit == 'cmb':
-			cb.cp().process(['QCDmujets']).AddSyst(
-				cb, 'CMS_httbar_mujets_QCDNorm', 'lnN', ch.SystMap('bin_id')([cat_to_id['mujets']], 2.0))
-		if args.limit == 'electrons' or args.limit == 'cmb':
-			cb.cp().process(['QCDejets']).AddSyst(
-				cb, 'CMS_httbar_ejets_QCDNorm', 'lnN', ch.SystMap('bin_id')([cat_to_id['ejets']], 2.0))
-
+				
 		# GENERIC SHAPE UNCERTAINTIES
 		shape_uncertainties = [
 			'CMS_pileup', 'CMS_eff_b_13TeV', 'CMS_fake_b_13TeV', 
@@ -114,10 +101,26 @@ for mode in modes:
 		
 		for shape_uncertainty in shape_uncertainties:
 			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap()(1.))
+
+		#E/Mu uncertainties
+		if args.limit == 'muons' or args.limit == 'cmb':
+			cb.cp().process(['QCDmujets']).AddSyst(
+				cb, 'CMS_httbar_mujets_QCDNorm', 'lnN', ch.SystMap('bin_id')([cat_to_id['mujets']], 2.0))
+			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+        cb, 'CMS_eff_trigger_m', 'lnN', ch.SystMap('bin_id')([cat_to_id['mujets']], 1.02))
+			shape_uncertainties_mu = ['CMS_eff_m']
+			for shape_uncertainty in shape_uncertainties_mu:
+				cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_to_id['mujets']], 1.))
+		if args.limit == 'electrons' or args.limit == 'cmb':
+			cb.cp().process(['QCDejets']).AddSyst(
+				cb, 'CMS_httbar_ejets_QCDNorm', 'lnN', ch.SystMap('bin_id')([cat_to_id['ejets']], 2.0))
+			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+        cb, 'CMS_eff_trigger_e', 'lnN', ch.SystMap('bin_id')([cat_to_id['ejets']], 1.02))
+			shape_uncertainties_mu = ['CMS_eff_e']
+			for shape_uncertainty in shape_uncertainties_mu:
+				cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_to_id['ejets']], 1.))
+
 		
-		shape_uncertainties_mu = ['CMS_eff_m']
-		for shape_uncertainty in shape_uncertainties_mu:
-			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_to_id['mujets']], 1.))
 		
 		# SPECIFIC SHAPE UNCERTAINTIES
 		
@@ -131,7 +134,7 @@ for mode in modes:
 				cb, shape_uncertainty, 'shape', ch.SystMap()(1.))
 		
 		print '>> Extracting histograms from input root files...'
-		in_file = aux_shapes + 'templates_%s.root' % args.jobid #1D_161110
+		in_file = aux_shapes + 'templates_%s_morphed.root' % args.jobid #1D_161110
 		
 		cb.cp().backgrounds().ExtractShapes(
 			in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC')
