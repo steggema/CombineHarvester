@@ -66,7 +66,7 @@ def prepareLeptonPlusJets(cb, procs, in_file, masses=['400', '500', '600', '750'
 
     # EXPERIMENT
     cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
-        cb, 'lumi', 'lnN', ch.SystMap()(1.026))
+        cb, 'lumi', 'lnN', ch.SystMap()(1.025))
 
 
     ### SHAPE UNCERTAINTIES
