@@ -26,16 +26,20 @@ def createProcessNames(widths=['5', '10', '25', '50'], modes=['A']):
     return procs
 
 
-def prepareLeptonPlusJets(cb, procs, in_file, masses=['400', '500', '600', '750']):
+def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500', '600', '750']):
 
     cats = [(0, 'mujets'), (1, 'ejets')]
     cat_to_id = {a:b for b, a in cats}
 
     cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], cats)
-    cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg'], cats, False)
-    cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg_e'], [(1, 'ejets')], False)
-    cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg_mu'], [(0, 'mujets')], False)
-    cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], cats, True)
+
+    if channel in ['cmb', 'electrons']:
+        cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg'] + procs['bkg_e'], [(1, 'ejets')], False)
+        cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], [(1, 'ejets')], True)
+
+    if channel in ['cmb', 'muons']:
+        cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg'] + procs['bkg_mu'], [(0, 'mujets')], False)
+        cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], [(0, 'mujets')], True)
 
     print '>> Adding systematic uncertainties...'
 
@@ -131,7 +135,7 @@ def performMorphing(cb, procs, m_min=400., m_max=750., mass_debug=False):
     #               RooAbsReal& mass_var, std::string norm_postfix,
     #               bool allow_morph, bool verbose, bool force_template_limit, TFile * file)
 
-def writeCards(cb, mode='A', width='5', doMorph=False, verbose=True):
+def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=True):
     print '>> Setting standardised bin names...'
     ch.SetStandardBinNames(cb)
     
@@ -148,16 +152,21 @@ def writeCards(cb, mode='A', width='5', doMorph=False, verbose=True):
         writer.SetWildcardMasses([])
     
     writer.SetVerbosity(1 if verbose else 0)
-    writer.WriteCards('output/{mode}_{width}'.format(mode=mode, width=width), cb)
+    writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=jobid, mode=mode, width=width), cb)
     # writer.WriteCards('output_comb/', cb)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('jobid')
+    parser.add_argument('--channels' , choices=['electrons', 'muons', 'cmb'], help='choose leptonic decay type', default='cmb')
+    parser.add_argument('--masses', default='400,500,600,750', help='comma separated list of masses')
+    parser.add_argument('--parity', default='A', help='comma separated list of parity (A,H only)')
+    parser.add_argument('--widths', default='2p5,5,10,25,50', help='comma separated list of widths')
     parser.add_argument(
         '--noBBB', action='store_false', dest='addBBB', help='add bin-by-bin uncertainties', default=True)
     parser.add_argument(
-        '--noMorph', action='store_false', dest='doMorph', help='apply mass morphing', default=True)
+        '--doMorph', action='store_true', dest='doMorph', help='apply mass morphing', default=False)
     parser.add_argument(
         '--lj_file', dest='lj_file', default='templates1D_240317.root')
     parser.add_argument(
@@ -172,9 +181,11 @@ if __name__ == '__main__':
     aux_shapes = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/'
     in_file = aux_shapes + args.lj_file
 
-    masses = ['400', '500', '600', '750']
-    widths = ['5', '10', '25', '50'] # in percent
-    modes = ['A'] #, 'H']
+    masses = args.masses.split(',')
+    widths = args.widths.split(',')#['5', '10', '25', '50'] # in percent
+    modes = args.parity.split(',')
+
+    print masses, widths, modes
 
     for mode in modes:
         for width in widths:
@@ -182,7 +193,7 @@ if __name__ == '__main__':
             cb = ch.CombineHarvester()
 
             procs = createProcessNames([width], [mode])
-            prepareLeptonPlusJets(cb, procs, in_file, masses)
+            prepareLeptonPlusJets(cb, procs, in_file, args.channels, masses)
 
             if addBBB:
                 addBinByBin(cb)
@@ -191,7 +202,7 @@ if __name__ == '__main__':
                 f_masses = [float(m) for m in masses]
                 performMorphing(cb, procs, min(f_masses), max(f_masses))
 
-            writeCards(cb, mode, width, doMorph, verbose=not args.silent)
+            writeCards(cb, args.jobid, mode, width, doMorph, verbose=not args.silent)
 
     print '>> Done!'
 
