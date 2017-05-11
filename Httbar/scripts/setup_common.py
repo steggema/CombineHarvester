@@ -167,8 +167,8 @@ if __name__ == '__main__':
         '--noBBB', action='store_false', dest='addBBB', help='add bin-by-bin uncertainties', default=True)
     parser.add_argument(
         '--doMorph', action='store_true', dest='doMorph', help='apply mass morphing', default=False)
-    parser.add_argument(
-        '--lj_file', dest='lj_file', default='templates1D_240317.root')
+    # parser.add_argument(
+    #     '--lj_file', dest='lj_file', default='templates1D_240317.root')
     parser.add_argument(
         '--ll_file', dest='ll_file', default='ttBSM_13TeV_2D_PS_M400_RelW5_tagv3.root')
     parser.add_argument(
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     doMorph = args.doMorph
 
     aux_shapes = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/'
-    in_file = aux_shapes + args.lj_file
+    in_file = aux_shapes + 'templates_%s.root' % args.jobid #1D_161110
 
     masses = args.masses.split(',')
     widths = args.widths.split(',')#['5', '10', '25', '50'] # in percent

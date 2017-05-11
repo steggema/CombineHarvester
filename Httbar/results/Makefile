@@ -1,12 +1,13 @@
-jobid=1D_240317
+jobid=morph
 runmode='--run blind'
 limitdir=output$(jobid)
+masses=400,450,500,550,600,650,700,750
 
 #../data/templates_$(jobid)_morphed.root: ../data/templates_$(jobid).root ../scripts/morph_widths.py
 #	../scripts/morph_widths.py ../data/templates_$(jobid).root
 
-$(limitdir)/.cards: ../data/templates$(jobid).root ../scripts/setup_common.py #../data/templates_$(jobid)_morphed.root ../scripts/setup_andrey.py
-	python ../scripts/setup_common.py ${jobid} --parity=A && touch $@
+$(limitdir)/.cards: ../data/templates_$(jobid).root ../scripts/setup_common.py #../data/templates_$(jobid)_morphed.root ../scripts/setup_andrey.py
+	python ../scripts/setup_common.py ${jobid} --parity=A --masses=${masses}  && touch $@
 
 cards: $(limitdir)/.cards
 
