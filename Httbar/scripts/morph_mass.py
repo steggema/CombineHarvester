@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+from os import path
 from argparse import ArgumentParser
 from numpy import array
 
@@ -30,6 +32,7 @@ to_make = [m for m in to_make if m not in available]
 print 'Output masses:', to_make
 
 widths = args.widths.split(',')
+# widths = ['5', '10', '25', '50']
 
 outname = args.inputfile.replace('.root', '_morphed_mass.root')
 # shutil.copyfile(args.inputfile, outname)
@@ -39,6 +42,11 @@ outfile = ROOT.TFile(outname, 'RECREATE')
 # m_ttbar = ROOT.RooRealVar('mass', 'mass', 0., 100.)
 m_ttbar = ROOT.RooRealVar('mass', 'mass', 250., 1200.) # FIXME - get these from the input histograms
 m_A = ROOT.RooRealVar('m_A', 'm_A', float(min(available)), float(max(available)))
+
+
+# Get mass interpolation from Viola's file
+file_int = ROOT.TFile(path.expandvars('$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root'))
+# pattern_translator = {'pos-sgn':'res', 'pos-int':'int'}
 
 def interpolate(masses, yields, test_mass, linear=True):
 	if not linear:
@@ -66,13 +74,21 @@ def interpolate(masses, yields, test_mass, linear=True):
 	
 
 
-for channel in [i.GetName() for i in infile.GetListOfKeys()]:
+# for channel in [i.GetName() for i in infile.GetListOfKeys()]:
+for channel in ['ejets', 'mujets']:
 	tdir = infile.Get(channel)
 	tdir.cd()
 	outfile.mkdir(channel)
 	for pattern in ['neg-int', 'pos-int', 'pos-sgn']:
 		for width in widths:
 			unc_names = unc_names_ele if channel == 'ejets' else unc_names_mu
+
+			# FIXME: use signal cross section for everything. Cant use interference
+			# since we need split into pos/neg parts
+			g_int = file_int.Get('A_res_semilep_w{}_toterr'.format(width))
+
+			# unc_names = ['']
+
 			for unc_name in unc_names:
 
 				pdfs = RooArgList()
@@ -81,9 +97,11 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 				yields = []
 				for i_m, mass in enumerate(available):
 					h_ori = infile.Get('{channel}/ggA_{pattern}-{width}pc-M{mass}{unc_name}'.format(channel=channel, pattern=pattern, width=width, mass=mass, unc_name=unc_name))
-					yields.append(h_ori.Integral())
+					yields.append(h_ori.Integral()/g_int.Eval(mass))
 					# print '{channel}/ggA_{pattern}-{width}pc-M{mass}{unc_name}'.format(channel=channel, pattern=pattern, width=width, mass=mass, unc_name=unc_name)
-					h_ori.Scale(1./h_ori.Integral())
+					h_ori.Scale(1./g_int.Eval(mass))
+					# if pattern == 'neg-int':
+					# 	h_ori.Scale(-1.)
 					data_hist = RooDataHist('m'+h_ori.GetName(), '', RooArgList(m_ttbar), h_ori, 1.)
 					pdf = RooHistPdf('pdf_m'+h_ori.GetName(), '', RooArgSet(m_ttbar), data_hist)
 					pdfs.add(pdf)
@@ -94,6 +112,8 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 				setting = getattr(ROOT.RooMomentMorph, args.algo)
 				morph = RooMomentMorph('morph'+channel+pattern, '', m_A, RooArgList(m_ttbar), pdfs, vd, setting)
 				# morph.Print('v')
+
+				print 'Yields', yields
 				
 				for test_mass in to_make:
 					m_A.setVal(float(test_mass))
@@ -101,12 +121,16 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 					h_morph = h_ori.Clone('MORPH'+h_ori.GetName().replace(str(available[-1]), str(test_mass)))
 
 					for i_bin in xrange(h_ori.GetNbinsX()):
+
+						# print test_mass
+
 						x = h_ori.GetBinCenter(i_bin+1)
 						# print 'mttbar = ', x
 						m_ttbar.setVal(x)
 
 						# for i_pdf in xrange(len(pdfs)):
 						# 	print pdfs[i_pdf].getVal()
+						# print 'Morphed val:', morph.getVal()
 
 						h_morph.SetBinContent(i_bin+1, morph.getVal()*h_ori.GetBinWidth(i_bin+1))
 					h_morph_rebin = h_morph.Rebin(len(output_binning)-1, h_morph.GetName().replace('MORPH', ''), array(output_binning))
@@ -115,5 +139,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 					outdir.cd()
 
 					scale = interpolate(available, yields, test_mass)
-					h_morph_rebin.Scale(scale/h_morph_rebin.Integral())
+					h_morph_rebin.Scale(scale/h_morph_rebin.Integral()*g_int.Eval(mass))
+					# if pattern == 'neg-int':
+					# 	h_morph_rebin.Scale(-1.)
 					h_morph_rebin.Write()

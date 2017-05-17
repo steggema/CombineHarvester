@@ -17,7 +17,7 @@ $(limitdir)/.workspace: $(limitdir)/.cards ../scripts/Httbar_workspace.sh
 workspace: $(limitdir)/.workspace
 
 $(limitdir)/.limit: $(limitdir)/.workspace ../scripts/Httbar_limits.sh
-	cd $(limitdir) && ../../scripts/Httbar_limits.sh ${runmode} && cd - && touch $@
+	cd $(limitdir) && Httbar_limits.sh ${runmode} && cd - && touch $@
 
 limits: $(limitdir)/.limit
 
@@ -36,5 +36,9 @@ $(limitdir)/.breakdown: $(limitdir)/.workspace
 
 breakdown: $(limitdir)/.breakdown
 
+$(limitdir)/.impacts: $(limitdir)/.workspace ../scripts/impacts.sh
+	cd $(limitdir) && impacts.sh ${runmode} && cd - && touch $@
+
+impacts: $(limitdir)/.impacts
 
 all: $(limitdir)/.plot
