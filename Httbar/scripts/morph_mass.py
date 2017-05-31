@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from timeit import default_timer as timer
 
 from os import path
 from argparse import ArgumentParser
@@ -9,13 +10,15 @@ import ROOT
 from ROOT import TVectorD
 from ROOT import RooDataHist, RooArgSet, RooArgList, RooMomentMorph, RooHistPdf
 
+ROOT.TH1.AddDirectory(False)
+
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 parser = ArgumentParser()
 parser.add_argument('inputfile')
 parser.add_argument('--hyperbolic', action='store_true',
                     help='use hyperbolic interpolation')
-parser.add_argument('--algo', default='Linear',
+parser.add_argument('--algo', default='NonLinearPosFractions',
                     help="Choose morphing algo from 'Linear', 'NonLinear', 'NonLinearPosFractions', 'NonLinearLinFractions', 'SineLinear'")
 parser.add_argument('--input_masses', default='400,500,600,750',
                     help='comma separated list of masses')
@@ -91,6 +94,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
     h_names = set([key.GetName().replace('400', '{MASS}').replace('500', '{MASS}').replace('600', '{MASS}').replace('750', '{MASS}') for key in tdir.GetListOfKeys()])
     print 'Processing', len(h_names), 'different signal templates'
     for h_name in h_names: # it's not very nice - somehow need to make sure we extract all the histogram name but the mass
+        start = timer()
         pattern = h_name[4:11]
         width = [w for w in widths if w+'pc' in h_name]
         width = max(width, key=len) # e.g. for '2p5pc' and '5pc'
@@ -115,11 +119,13 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
         if not g_int:
             import pdb; pdb.set_trace()
 
-        # unc_names = ['']
-
         mass_hists = {}
         # First get the histograms for all masses
+
         print '\n Processing:', h_name
+
+        tmp_file = ROOT.TFile('_tmp.root', 'RECREATE')
+
         for mass in available:
             # print 'MASS', mass
             # print '{channel}/{h_name}'.format(
@@ -139,6 +145,9 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 
         d_hists_region = {}
 
+        eval_time = 0.
+        create_time = 0.
+
         # Split input histogram
         # I DONT WANT TO DO THAT BUT OK
         for i_costheta in xrange(N_REGIONS):
@@ -153,6 +162,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 
                 n_bins_region = n_bins/N_REGIONS
 
+                tmp_file.cd()
                 h_region = ROOT.TH1D(channel+h_all.GetName()+str(i_costheta), '', n_bins_region, MIN_MASS, MAX_MASS)
                 yields.append(h_region.Integral())
                 for i_bin in xrange(n_bins_region):
@@ -181,15 +191,15 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 
             for test_mass in to_make:
                 m_A.setVal(float(test_mass))
-
+                tmp_file.cd()
                 h_morph_region = h_region.Clone(
                     'MORPH' + h_region.GetName().replace(str(available[-1]), str(test_mass)))
 
-                for i_bin in xrange(h_region.GetNbinsX()):
+                for i_bin in xrange(h_morph_region.GetNbinsX()):
 
                     # print test_mass
 
-                    x = h_region.GetBinCenter(i_bin + 1)
+                    x = h_morph_region.GetBinCenter(i_bin + 1)
                     # print 'mttbar = ', x
                     m_ttbar.setVal(x)
 
@@ -212,7 +222,11 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                     h_morph_region_rebin.Scale(g_int_frac.Eval(mass))
 
                 d_hists_region[i_costheta][test_mass] = h_morph_region_rebin
-
+                del h_morph_region # Save execution time (->ROOT)
+            # Delete items as execution time grows extremely otherwise
+            for item in keeper:
+                del item
+        
         # Now add the hists from the different regions for all masses
         for test_mass in to_make:
             n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
@@ -228,4 +242,6 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                     h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinContent(i_bin+1))
 
             h_out.Write()
-            outfile.Write()
+        tmp_file.Close()
+        print 'Time elapsed:', timer() - start
+    outfile.Write()
