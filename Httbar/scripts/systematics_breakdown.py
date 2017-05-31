@@ -62,7 +62,11 @@ groups = {
 	'QCDNorm'   : ['CMS_httbar_QCD*Norm'],
 	'PU'        : ['CMS_pileup'],
 	'Theory'    : ['*_TT', 'TMass', 'pdf'],	
+	'Theo_TMas' : ['TMass'],	
+	'Theo_pdf'  : ['pdf'],	
+	'Theo_QCDScale' : ['*_TT'],	
 }
+groups['Experimental'] = groups['BTag']+groups['Leptons']+groups['JetMET']+groups['PU']+groups['QCDNorm']
 
 class Backup:
 	def __init__(self, flist):

@@ -38,7 +38,7 @@ $(limitdir)/.impacts: $(limitdir)/.workspace ../scripts/impacts.sh
 
 impacts: $(limitdir)/.impacts
 
-$(limitdir)/.plot: $(limitdir)/.jsons ../scripts/Httbar_plots.sh
+$(limitdir)/.plot: $(limitdir)/.jsons $(limitdir)/.breakdown ../scripts/Httbar_plots.sh ../scripts/compareLimits.py
 	cd .. && scram b && cd - && cd $(limitdir) &&	mkdir -p plots && Httbar_plots.sh && cd - && touch $@
 
 plots: $(limitdir)/.plot
