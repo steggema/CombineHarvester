@@ -4,9 +4,9 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument('jsons', nargs='+', help='json_file:label')
 #FIXME add auto labels
-parser.add_argument('-x', help='x label')
-parser.add_argument('-y', help='y label')
-parser.add_argument('-t', help='title')
+parser.add_argument('-x', default='', help='x label')
+parser.add_argument('-y', default='', help='y label')
+parser.add_argument('-t', default='', help='title')
 parser.add_argument('-o', default='out.png', help='output')
 parser.add_argument('--autolabels', action='store_true', help='output')
 parser.add_argument(
@@ -18,6 +18,7 @@ from ROOT import gROOT, TCanvas, TGraph, TLegend
 import json
 import uuid
 import os
+from pdb import set_trace
 
 def json2graph(jfile, topick):
 	jinfo = json.loads(open(jfile).read())
@@ -35,7 +36,10 @@ legend = TLegend(0.1,0.7,0.48,0.9);
 keep = []
 ms = []
 Ms = []
-colors = [2,4,6,8,28,46,14,31,1]
+colors = [1, 2, 4, 8, 9, 28, 46, 14, 41]#[2,4,6,8,28,46,14,31,1]
+if len(colors) < len(args.jsons):
+	raise RuntimeError('I have more limits than colors to display them!')
+
 first=True
 for jfilelabel, color in zip(args.jsons, colors):
 	if not args.autolabels:
