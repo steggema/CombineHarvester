@@ -25,6 +25,7 @@ parser.add_argument('--input_masses', default='400,500,600,750',
 parser.add_argument('--widths', default='2p5,5,10,25,50',
                     help='comma separated list of widths')
 parser.add_argument('--stepsize', default='50')
+parser.add_argument('--interpolate', default='True')
 
 args = parser.parse_args()
 
@@ -34,6 +35,9 @@ OUTPUT_BINNING = [250.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0,
 N_REGIONS = 5
 MIN_MASS = 250.0
 MAX_MASS = 1200.0
+
+# Yield interpolation by hand (true) or via RooMorph (false)
+do_interpolate = False if not args.interpolate or args.interpolate=='False' else True
 
 available = sorted([int(m) for m in args.input_masses.split(',')])
 stepsize = int(args.stepsize)
@@ -104,17 +108,21 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
             continue
 
         if 'ggH' in h_name:
-            print 'FIXME - no ggH for the moment in the other signal files, continue'
+            # print 'FIXME - no ggH for the moment in the other signal files, continue'
             continue
 
         g_int = None
-        g_int_frac = None
+        g_int_neg_frac = None
         if pattern == 'pos-sgn':
             g_int = file_int.Get('A_res_semilep_w{}_toterr'.format(width))
 
         if pattern in ['pos-int', 'neg-int']:
             g_int = file_int_int.Get('A_int_semilep_w{}_SEweight'.format(width))
-            g_int_frac = file_int_int.Get('A_int_semilep_w{}_NegEvts_Frac'.format(width))
+            g_int_neg_frac = file_int_int.Get('A_int_semilep_w{}_NegEvts_Frac'.format(width))
+            # print pattern
+            # for m in [400., 450., 500., 600., 700.]:
+            #     print m, g_int.Eval(m) * g_int_neg_frac.Eval(m)
+            #     print m, g_int.Eval(m) * (1. - g_int_neg_frac.Eval(m))
 
         if not g_int:
             import pdb; pdb.set_trace()
@@ -134,11 +142,13 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                 channel=channel, h_name=h_name).format(MASS=mass)).Clone()
 
             h_ori.Scale(1. / g_int.Eval(mass))
-            if pattern == 'pos_int':
-                h_ori.Scale(1. / (1. - g_int_frac.Eval(mass)))
-            if pattern == 'neg_int':
-                h_ori.Scale(1. / g_int_frac.Eval(mass))
 
+
+            if pattern == 'pos-int':
+                h_ori.Scale(1. / (1. - g_int_neg_frac.Eval(mass)))
+
+            if pattern == 'neg-int':
+                h_ori.Scale(1. / g_int_neg_frac.Eval(mass))
             # yields.append(h_ori.Integral())
 
             mass_hists[mass] = h_ori
@@ -164,11 +174,13 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 
                 tmp_file.cd()
                 h_region = ROOT.TH1D(channel+h_all.GetName()+str(i_costheta), '', n_bins_region, MIN_MASS, MAX_MASS)
-                yields.append(h_region.Integral())
+                
                 for i_bin in xrange(n_bins_region):
                     h_region.SetBinContent(i_bin+1, h_all.GetBinContent(i_bin+1 + i_costheta*n_bins_region))
                     if h_all.GetBinContent(i_bin+1 + i_costheta*n_bins_region) < 0.:
                         import pdb; pdb.set_trace()
+
+                yields.append(h_region.Integral())
 
                 # if pattern == 'neg-int':
                 # 	h_ori.Scale(-1.)
@@ -187,7 +199,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                 'morph' + channel + h_name.format(MASS='000'), '', m_A, RooArgList(m_ttbar), pdfs, vd, setting)
             # morph.Print('v')
 
-            # print 'Yields', pattern, yields
+            # print 'Yields', i_costheta, pattern, yields
 
             for test_mass in to_make:
                 m_A.setVal(float(test_mass))
@@ -196,8 +208,6 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                     'MORPH' + h_region.GetName().replace(str(available[-1]), str(test_mass)))
 
                 for i_bin in xrange(h_morph_region.GetNbinsX()):
-
-                    # print test_mass
 
                     x = h_morph_region.GetBinCenter(i_bin + 1)
                     # print 'mttbar = ', x
@@ -209,17 +219,23 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 
                     h_morph_region.SetBinContent(
                         i_bin + 1, morph.getVal() * h_morph_region.GetBinWidth(i_bin + 1))
+                
                 h_morph_region_rebin = h_morph_region.Rebin(len(
                     OUTPUT_BINNING) - 1, h_morph_region.GetName().replace('MORPH', ''), array(OUTPUT_BINNING))
 
+                if do_interpolate:
+                    scale = interpolate(available, yields, test_mass)
+                    if scale == 0.:
+                        import pdb; pdb.set_trace()
 
-                scale = interpolate(available, yields, test_mass)
-                h_morph_region_rebin.Scale(
-                    scale / h_morph_region_rebin.Integral() * g_int.Eval(mass))
+                    h_morph_region_rebin.Scale(
+                        scale / h_morph_region_rebin.Integral())
+                
+                h_morph_region_rebin.Scale(g_int.Eval(test_mass))
                 if pattern == 'pos-int':
-                    h_morph_region_rebin.Scale(1. - g_int_frac.Eval(mass))
+                    h_morph_region_rebin.Scale(1. - g_int_neg_frac.Eval(test_mass))
                 if pattern == 'neg-int':
-                    h_morph_region_rebin.Scale(g_int_frac.Eval(mass))
+                    h_morph_region_rebin.Scale(g_int_neg_frac.Eval(test_mass))
 
                 d_hists_region[i_costheta][test_mass] = h_morph_region_rebin
                 del h_morph_region # Save execution time (->ROOT)
@@ -240,8 +256,9 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                 n_bins_part = h_part.GetNbinsX()
                 for i_bin in xrange(n_bins_part):
                     h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinContent(i_bin+1))
-
+                    h_out.SetBinError(i_bin+1, 0.)
             h_out.Write()
+            # print 'Writing', test_mass, h_out.Integral()
         tmp_file.Close()
         print 'Time elapsed:', timer() - start
     outfile.Write()
