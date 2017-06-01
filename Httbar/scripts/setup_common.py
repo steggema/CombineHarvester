@@ -98,7 +98,7 @@ def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500
 
 	for shape_uncertainty in shape_uncertainties_tt:
 		cb.cp().process(['TT']).AddSyst(
-			cb, shape_uncertainty, 'shape', ch.SystMap()(1.))
+			cb, shape_uncertainty, 'shape', ch.SystMap()(0.166667 if shape_uncertainty=='TMass' else 1.))
 
 	print '>> Extracting histograms from input root files...'
 	cb.cp().backgrounds().ExtractShapes(
