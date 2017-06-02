@@ -36,7 +36,7 @@ legend = TLegend(0.1,0.7,0.48,0.9);
 keep = []
 ms = []
 Ms = []
-colors = [1, 2, 4, 8, 9, 28, 46, 14, 41]#[2,4,6,8,28,46,14,31,1]
+colors = [1, 2, 4, 8, 28, 46, 14, 41, 9]#[2,4,6,8,28,46,14,31,1]
 if len(colors) < len(args.jsons):
 	raise RuntimeError('I have more limits than colors to display them!')
 
@@ -46,7 +46,12 @@ for jfilelabel, color in zip(args.jsons, colors):
 		jfile, label = tuple(jfilelabel.split(':'))
 	else:
 		jfile = jfilelabel
-		label = os.path.basename(jfile).split('_')[0]
+		split = os.path.basename(jfile).split('_')
+		if len(split) == 3:
+			label = split[0]
+		else:
+			label = split[1]
+			
 	graph, m, M = json2graph(jfile, args.use)
 	ms.append(m)
 	Ms.append(M)
