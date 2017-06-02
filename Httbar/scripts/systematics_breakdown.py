@@ -38,9 +38,10 @@ def tag(src, value):
 
 parser = ArgumentParser()
 parser.add_argument('--run', choices=['blind'])
+parser.add_argument('--masses', default='[0-9][0-9][0-9]', help='posix-regex for the masses to use')
 args = parser.parse_args()
 
-txts = glob('[AH]_[0-9]*/[0-9][0-9][0-9]/combined.txt.cmb')# % args.jobid)
+txts = glob('[AH]_[0-9]*/%s/combined.txt.cmb' % args.masses)# % args.jobid)
 if not txts:
 	raise RuntimeError('I could not find any datacard available')
 txt = txts[0]
@@ -62,7 +63,7 @@ groups = {
 	'QCDNorm'   : ['CMS_httbar_QCD*Norm'],
 	'PU'        : ['CMS_pileup'],
 	'Theory'    : ['*_TT', 'TMass', 'pdf'],	
-	'Theo_TMas' : ['TMass'],	
+	'Theo_TMass': ['TMass'],	
 	'Theo_pdf'  : ['pdf'],	
 	'Theo_QCDScale' : ['*_TT'],	
 }
@@ -93,12 +94,15 @@ with Backup(glob('[AH]_[0-9]*/[0-9][0-9][0-9]/higgsCombine.limit.Asymptotic.*.ro
 		if not tofreeze:
 			raise RuntimeError('I could not find any nuisance matching the group %s (%s)' % (group, ', '.join(names)))
 		call(
-			('combineTool.py -M Asymptotic --freezeNuisances %s'
-			 ' -d */*/workspace.root --there -n .limit --parallel 8 %s') % \
-				(','.join(tofreeze), '--run blind' if args.run == 'blind' else '')
+			('combineTool.py -M Asymptotic --freezeNuisances {freeze}'
+			 ' -d */{masses}/workspace.root --there -n .limit --parallel 8 {opts}').format(
+				freeze=','.join(tofreeze),
+				opts='--run blind' if args.run == 'blind' else '',
+				masses = args.masses
+				)
 			)
 	  #tag outputs
-		[tag(i, group) for i in glob('[AH]_[0-9]*/[0-9][0-9][0-9]/higgsCombine.limit.Asymptotic.*.root')]
+		[tag(i, group) for i in glob('[AH]_[0-9]*/%s/higgsCombine.limit.Asymptotic.*.root' % args.masses)]
 		call(
 			'combineTool.py -M CollectLimits */*/{0}_*.limit.* --use-dirs -o {0}.json'.format(group)
 			)

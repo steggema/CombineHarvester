@@ -1,5 +1,5 @@
+#jobid=2D_240317_morph
 jobid=2D_2017Mar23
-#jobid=morph
 runmode=--run blind
 limitdir=output$(jobid)
 #masses=400,450,500,550,600,650,700,750
@@ -23,24 +23,33 @@ $(limitdir)/.limit: $(limitdir)/.workspace ../scripts/Httbar_limits.sh
 
 limits: $(limitdir)/.limit
 
-$(limitdir)/.jsons: $(limitdir)/.limit
-	cd $(limitdir) && combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic.mH[0-9][0-9][0-9].root --use-dirs && cd - && touch $@
+$(limitdir)/.jsons: $(limitdir)/.limit ../scripts/transpose_jsons.py
+	cd .. && scram b && cd - && cd $(limitdir) && \
+	combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic.mH[0-9][0-9][0-9].root --use-dirs && \
+	transpose_jsons.py limits_A_[0-9]*.json && cd - && touch $@
 
 jsons: $(limitdir)/.jsons
 
-$(limitdir)/.breakdown: $(limitdir)/.workspace ../scripts/systematics_breakdown.py
-	cd $(limitdir) && ../../scripts/systematics_breakdown.py ${runmode} && cd - && touch $@
+$(limitdir)/.limitplots: $(limitdir)/.jsons ../scripts/Httbar_plots.sh
+	cd .. && scram b && cd - && cd $(limitdir) &&	mkdir -p plots && Httbar_plots.sh && cd - && touch $@
+
+limitplots: $(limitdir)/.limitplots
+
+$(limitdir)/.breakdown: $(limitdir)/.workspace ../scripts/systematics_breakdown.py ../scripts/transpose_jsons.py
+	cd .. && scram b && cd - && cd $(limitdir) && \
+	../../scripts/systematics_breakdown.py ${runmode} --masses '[0-9]00' && \
+	transpose_jsons.py *_A_[0-9]*.json && cd - && touch $@
 
 breakdown: $(limitdir)/.breakdown
+
+$(limitdir)/.breakdownplots: $(limitdir)/.breakdown $(limitdir)/.jsons ../scripts/breakdown_plots.sh
+	cd .. && scram b && cd - && cd $(limitdir) && mkdir -p plots && breakdown_plots.sh && cd - && touch $@
+
+breakdownplots: $(limitdir)/.breakdownplots
 
 $(limitdir)/.impacts: $(limitdir)/.workspace ../scripts/impacts.sh
 	cd $(limitdir) && impacts.sh ${runmode} && cd - && touch $@
 
 impacts: $(limitdir)/.impacts
 
-$(limitdir)/.plot: $(limitdir)/.jsons $(limitdir)/.breakdown ../scripts/Httbar_plots.sh ../scripts/compareLimits.py
-	cd .. && scram b && cd - && cd $(limitdir) &&	mkdir -p plots && Httbar_plots.sh && cd - && touch $@
-
-plots: $(limitdir)/.plot
-
-all: $(limitdir)/.plot
+all: $(limitdir)/.limitplots $(limitdir)/.breakdownplots $(limitdir)/.impacts
