@@ -12,7 +12,7 @@ from ROOT import RooWorkspace, TFile, RooRealVar
 import CombineHarvester.CombineTools.ch as ch
 from CombineHarvester.CombinePdfs.morphing import BuildRooMorphing
 
-def createProcessNames(widths=['5', '10', '25', '50'], modes=['A']):
+def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan):
 	patterns = ['gg{mode}_pos-sgn-{width}pc-M', 'gg{mode}_pos-int-{width}pc-M',  'gg{mode}_neg-int-{width}pc-M']
 
 	procs = {
@@ -22,8 +22,84 @@ def createProcessNames(widths=['5', '10', '25', '50'], modes=['A']):
 		'bkg_mu':['QCDmujets'],
 		'bkg_e':['QCDejets']
 	}
+	
+	procs_ll = {
+		'sig': [pattern.format(mode=mode, width=width) for width in widths for pattern in patterns for mode in modes],
+		'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTV'],
+	}
 
-	return procs
+	return procs if chan == 'lj' else procs_ll
+
+def prepareDiLepton(cb, procs, in_file, masses=['400', '500', '600', '750']):
+	cats = [(0, 'll')]
+	cat_to_id = {a:b for b, a in cats}
+
+	cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], cats)
+	cb.AddProcesses(['*'],  ['httbar'], ['13TeV'], [''], procs['bkg'], [(0, 'll')], False)
+	cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], [(0, 'll')], True)
+
+	print '>> Adding systematic uncertainties...'
+
+	### RATE UNCERTAINTIES
+
+	# THEORY
+
+	LnNUnc = namedtuple('log_n_unc', 'procs name value')
+
+	# lnN uncertainties
+	theory_uncs = [
+		LnNUnc(['VV'], 'CMS_httbar_VVNorm_13TeV', 1.5),
+		LnNUnc(['TT'], 'TTXsec', 1.06), #FIXME?
+		LnNUnc(['tWChannel'], 'CMS_httbar_tWChannelNorm_13TeV', 1.15),
+		#LnNUnc(['tChannel'], 'CMS_httbar_tChannelNorm_13TeV', 1.20),
+		#LnNUnc(['sChannel'], 'CMS_httbar_sChannelNorm_13TeV', 1.20),
+		LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.30),
+		LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.30),
+		LnNUnc(['TTW'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
+		LnNUnc(['TTZ'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
+		LnNUnc(['TTG'], 'CMS_httbar_TTGNorm_13TeV', 1.3),		
+	]
+
+	for unc in theory_uncs:
+		cb.cp().process(unc.procs).AddSyst(
+		cb, unc.name, 'lnN', ch.SystMap()(unc.value))
+
+
+	# EXPERIMENT
+	cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+		cb, 'lumi', 'lnN', ch.SystMap()(1.025))
+
+
+	### SHAPE UNCERTAINTIES
+
+	# GENERIC SHAPE UNCERTAINTIES
+
+	shape_uncertainties = [
+		'CMS_pileup', 'CMS_eff_b_13TeV', 'CMS_fake_b_13TeV', 
+		'CMS_scale_j_13TeV', 'CMS_res_j_13TeV', 'CMS_METunclustered_13TeV',
+		'CMS_eff_l', 'CMS_eff_trigger_l',
+		]
+
+	for shape_uncertainty in shape_uncertainties:
+		cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap()(1.))
+
+	# SPECIFIC SHAPE UNCERTAINTIES
+	
+	shape_uncertainties_tt = [
+		'pdf', 'QCDscaleFSR_TT', 'QCDscaleISR_TT', 'Hdamp_TT', 
+		'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT'
+		]
+
+	for shape_uncertainty in shape_uncertainties_tt:
+		cb.cp().process(['TT']).AddSyst(
+			cb, shape_uncertainty, 'shape', ch.SystMap()(0.166667 if shape_uncertainty=='TMass' else 1.))
+
+	print '>> Extracting histograms from input root files...'
+	cb.cp().backgrounds().ExtractShapes(
+		in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC')
+	cb.cp().signals().ExtractShapes(
+		in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC')
+
 
 
 def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500', '600', '750']):
@@ -33,11 +109,11 @@ def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500
 
 	cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], cats)
 
-	if channel in ['cmb', 'electrons']:
+	if channel in ['cmb', 'ej', 'lj']:
 		cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg'] + procs['bkg_e'], [(1, 'ejets')], False)
 		cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], [(1, 'ejets')], True)
 
-	if channel in ['cmb', 'muons']:
+	if channel in ['cmb', 'mj', 'lj']:
 		cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg'] + procs['bkg_mu'], [(0, 'mujets')], False)
 		cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], [(0, 'mujets')], True)
 
@@ -52,7 +128,7 @@ def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500
 	# lnN uncertainties
 	theory_uncs = [
 		LnNUnc(['VV'], 'CMS_httbar_VVNorm_13TeV', 1.5),
-		LnNUnc(['TT'], 'QCDscale_ttbar', 1.06),
+		LnNUnc(['TT'], 'TTXsec', 1.06),
 		LnNUnc(['tWChannel'], 'CMS_httbar_tWChannelNorm_13TeV', 1.15),
 		LnNUnc(['tChannel'], 'CMS_httbar_tChannelNorm_13TeV', 1.20),
 		LnNUnc(['sChannel'], 'CMS_httbar_sChannelNorm_13TeV', 1.20),
@@ -70,7 +146,7 @@ def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500
 
 	# EXPERIMENT
 	cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
-		cb, 'lumi', 'lnN', ch.SystMap()(1.026))
+		cb, 'lumi', 'lnN', ch.SystMap()(1.025))
 
 
 	### SHAPE UNCERTAINTIES
@@ -82,12 +158,12 @@ def prepareLeptonPlusJets(cb, procs, in_file, channel='cmb', masses=['400', '500
 	for shape_uncertainty in shape_uncertainties:
 		cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap()(1.))
 
-		if channel in ['cmb', 'muons']:
+		if channel in ['cmb', 'mj', 'lj']:
 			shape_uncertainties_mu = ['CMS_eff_m']
 			for shape_uncertainty in shape_uncertainties_mu:
 				cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_to_id['mujets']], 1.))
 
-		if channel in ['cmb', 'electrons']:
+		if channel in ['cmb', 'ej', 'lj']:
 			shape_uncertainties_e = ['CMS_eff_e']
 			for shape_uncertainty in shape_uncertainties_e:
 				cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_to_id['ejets']], 1.))
@@ -161,7 +237,7 @@ def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=Tr
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('jobid')
-	parser.add_argument('--channels' , choices=['electrons', 'muons', 'cmb'], help='choose leptonic decay type', default='cmb')
+	parser.add_argument('--channels' , choices=['ej', 'mj', 'll', 'lj', 'cmb'], help='choose leptonic decay type', default='cmb')
 	parser.add_argument('--masses', default='400,500,600,750', help='comma separated list of masses')
 	parser.add_argument('--parity', default='A', help='comma separated list of parity (A,H only)')
 	parser.add_argument('--widths', default='2p5,5,10,25,50', help='comma separated list of widths')
@@ -181,7 +257,8 @@ if __name__ == '__main__':
 	doMorph = args.doMorph
 
 	aux_shapes = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/'
-	in_file = aux_shapes + 'templates_%s.root' % args.jobid #1D_161110
+	in_file_lj = aux_shapes + 'templates_lj_%s.root' % args.jobid #1D_161110
+	in_file_lj = aux_shapes + 'templates_ll_%s.root' % args.jobid #1D_161110
 
 	masses = args.masses.split(',')
 	widths = args.widths.split(',')#['5', '10', '25', '50'] # in percent
@@ -194,8 +271,13 @@ if __name__ == '__main__':
 
 			cb = ch.CombineHarvester()
 
-			procs = createProcessNames([width], [mode])
-			prepareLeptonPlusJets(cb, procs, in_file, args.channels, masses)
+			if args.channels != 'll':
+				procs = createProcessNames([width], [mode], 'lj')
+				prepareLeptonPlusJets(cb, procs, in_file_lj, args.channels, masses)
+
+			if args.channels in ['ll', 'cmb']:
+				procs = createProcessNames([width], [mode], 'll')
+				prepareDiLepton(cb, procs, in_file_ll, masses)
 
 			if addBBB:
 				addBinByBin(cb)
