@@ -5,16 +5,6 @@ from os import path
 from argparse import ArgumentParser
 from numpy import array
 
-import ROOT
-
-from ROOT import TVectorD
-from ROOT import RooDataHist, RooArgSet, RooArgList, RooMomentMorph, RooHistPdf
-from pdb import set_trace
-
-ROOT.TH1.AddDirectory(False)
-
-ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
-
 parser = ArgumentParser()
 parser.add_argument('inputfile')
 parser.add_argument('--hyperbolic', action='store_true',
@@ -29,6 +19,14 @@ parser.add_argument('--stepsize', default='50')
 parser.add_argument('--interpolate', default='True')
 
 args = parser.parse_args()
+
+import ROOT
+from ROOT import TVectorD
+from ROOT import RooDataHist, RooArgSet, RooArgList, RooMomentMorph, RooHistPdf
+from pdb import set_trace
+
+ROOT.TH1.AddDirectory(False)
+ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 # ALL THE DANGEROUS CONSTANTS IN ONE PLACE
 OUTPUT_BINNING = [300.0, 340.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0, 520.0, 540.0, 560.0, 580.0, 600.0, 625.0, 650.0, 675.0, 700.0, 730.0, 760.0, 800.0, 850.0, 900.0, 1000.0, 1200.0]
