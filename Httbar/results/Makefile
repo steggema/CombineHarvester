@@ -1,14 +1,25 @@
-#jobid=2D_240317_morph
-jobid=2D_2017Mar23
+jobid=2017Jul03
 runmode=--run blind
 limitdir=output$(jobid)
 #masses=400,450,500,550,600,650,700,750
 masses=400,500,600,750
 
-#../data/templates_$(jobid)_morphed.root: ../data/templates_$(jobid).root ../scripts/morph_widths.py
-#	../scripts/morph_widths.py ../data/templates_$(jobid).root
+#Morphing and merging
+../data/templates_ll_sig_$(jobid)_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< --algo NonLinearPosFractions --input_masses 400,500,600,750
 
-$(limitdir)/.cards: ../data/templates_$(jobid).root ../scripts/setup_common.py #../data/templates_$(jobid)_morphed.root ../scripts/setup_andrey.py
+../data/templates_lj_sig_$(jobid)_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< --algo NonLinearPosFractions --input_masses 400,500,600,750
+
+../data/templates_lj_$(jobid).root: ../data/templates_lj_sig_$(jobid)_morphed_mass.root ../data/templates_lj_bkg_$(jobid).root
+	hadd -f -O $@ $^
+
+../data/templates_ll_$(jobid).root: ../data/templates_ll_sig_$(jobid)_morphed_mass.root ../data/templates_ll_bkg_$(jobid).root
+	hadd -f -O $@ $^
+
+morph: ../data/templates_lj_$(jobid).root ../data/templates_ll_$(jobid).root
+
+$(limitdir)/.cards: ../data/templates_ll_$(jobid).root ../data/templates_lj_$(jobid).root ../scripts/setup_common.py #../data/templates_$(jobid)_morphed.root ../scripts/setup_andrey.py
 	python ../scripts/setup_common.py ${jobid} --parity=A --masses=${masses}  && touch $@
 
 cards: $(limitdir)/.cards
