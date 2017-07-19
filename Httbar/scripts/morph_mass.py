@@ -7,10 +7,10 @@ from numpy import array
 
 parser = ArgumentParser()
 parser.add_argument('inputfile')
-parser.add_argument('--hyperbolic', action='store_true',
-                    help='use hyperbolic interpolation')
+parser.add_argument('parity', choices=['A', 'H'], help='parity of the resonance')
 parser.add_argument('--algo', default='NonLinearPosFractions',
-                    help="Choose morphing algo from 'Linear', 'NonLinear', 'NonLinearPosFractions', 'NonLinearLinFractions', 'SineLinear'")
+										choices=['Linear', 'NonLinear', 'NonLinearPosFractions', 'NonLinearLinFractions', 'SineLinear'],
+                    help="Choose morphing algo")
 parser.add_argument('--input_masses', default='400,500,600,750',
                     help='comma separated list of masses')
 parser.add_argument('--widths', default='2p5,5,10,25,50',
@@ -47,7 +47,7 @@ print 'Output masses:', to_make
 widths = args.widths.split(',')
 # widths = ['5', '10', '25', '50']
 
-outname = args.inputfile.replace('.root', '_morphed_mass.root')
+outname = args.inputfile.replace('.root', '_%s_morphed_mass.root' % args.parity)
 # shutil.copyfile(args.inputfile, outname)
 infile = ROOT.TFile(args.inputfile)
 outfile = ROOT.TFile(outname, 'RECREATE')
@@ -95,6 +95,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
     outfile.mkdir(channel)
     h_names = set([key.GetName().replace('400', '{MASS}').replace('500', '{MASS}').replace('600', '{MASS}').replace('750', '{MASS}') for key in tdir.GetListOfKeys()])		
     #h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
+    h_names = set([i for i in h_names if not i.endswith('_') and i.startswith('gg%s' % args.parity)])
     print 'Processing', len(h_names), 'different signal templates'
     for h_name in h_names: # it's not very nice - somehow need to make sure we extract all the histogram name but the mass
         start = timer()
@@ -106,18 +107,14 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
             import pdb; pdb.set_trace()
             continue
 
-        if 'ggH' in h_name:
-            # print 'FIXME - no ggH for the moment in the other signal files, continue'
-            continue
-
         g_int = None
         g_int_neg_frac = None
         if pattern == 'pos-sgn':
-            g_int = file_int.Get('A_res_semilep_w{}_toterr'.format(width))
+            g_int = file_int.Get('{}_res_semilep_w{}_toterr'.format(args.parity, width))
 
         if pattern in ['pos-int', 'neg-int']:
-            g_int = file_int_int.Get('A_int_semilep_w{}_SEweight'.format(width))
-            g_int_neg_frac = file_int_int.Get('A_int_semilep_w{}_NegEvts_Frac'.format(width))
+            g_int = file_int_int.Get('{}_int_semilep_w{}_SEweight'.format(args.parity, width))
+            g_int_neg_frac = file_int_int.Get('{}_int_semilep_w{}_NegEvts_Frac'.format(args.parity, width))
             # print pattern
             # for m in [400., 450., 500., 600., 700.]:
             #     print m, g_int.Eval(m) * g_int_neg_frac.Eval(m)
@@ -164,9 +161,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
         eval_time = 0.
         create_time = 0.
 
-        #set_trace()
         # Split input histogram
-        # I DONT WANT TO DO THAT BUT OK
         if mass_hists[available[0]].GetNbinsY() != N_REGIONS:
             raise RuntimeError(
 							'the histogram %s has only %d y bins instead of %d expected' % \

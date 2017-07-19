@@ -1,26 +1,41 @@
 jobid=2017Jul03
 runmode=--run blind
-limitdir=output$(jobid)
-#masses=400,450,500,550,600,650,700,750
-masses=400,500,600,750
+channel=ll
+limitdir=output_$(channel)_$(jobid)
+masses=400,450,500,550,600,650,700,750
 
-#Morphing and merging
-../data/templates_ll_sig_$(jobid)_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../scripts/morph_mass.py
-	cd .. && scram b && cd - && morph_mass.py $< --algo NonLinearPosFractions --input_masses 400,500,600,750
+#
+#   Morphing and merging
+#
+../data/templates_ll_sig_$(jobid)_A_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< A --algo NonLinearPosFractions --input_masses 400,500,600,750
 
-../data/templates_lj_sig_$(jobid)_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../scripts/morph_mass.py
-	cd .. && scram b && cd - && morph_mass.py $< --algo NonLinearPosFractions --input_masses 400,500,600,750
+../data/templates_lj_sig_$(jobid)_A_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< A --algo NonLinearPosFractions --input_masses 400,500,600,750
 
-../data/templates_lj_$(jobid).root: ../data/templates_lj_sig_$(jobid)_morphed_mass.root ../data/templates_lj_bkg_$(jobid).root
+../data/templates_ll_sig_$(jobid)_H_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< H --algo NonLinearPosFractions --input_masses 400,500,600,750
+
+../data/templates_lj_sig_$(jobid)_H_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< H --algo NonLinearPosFractions --input_masses 400,500,600,750
+
+../data/templates_lj_$(jobid).root: ../data/templates_lj_sig_$(jobid)_A_morphed_mass.root ../data/templates_lj_sig_$(jobid)_H_morphed_mass.root ../data/templates_lj_bkg_$(jobid).root
 	hadd -f -O $@ $^
 
-../data/templates_ll_$(jobid).root: ../data/templates_ll_sig_$(jobid)_morphed_mass.root ../data/templates_ll_bkg_$(jobid).root
+../data/templates_ll_$(jobid).root: ../data/templates_ll_sig_$(jobid)_A_morphed_mass.root ../data/templates_ll_sig_$(jobid)_H_morphed_mass.root ../data/templates_ll_bkg_$(jobid).root
 	hadd -f -O $@ $^
 
-morph: ../data/templates_lj_$(jobid).root ../data/templates_ll_$(jobid).root
+../data/templates_ALL_$(jobid).root: ../data/templates_lj_$(jobid).root ../data/templates_ll_$(jobid).root
+	hadd -f -O $@ $^
 
-$(limitdir)/.cards: ../data/templates_ll_$(jobid).root ../data/templates_lj_$(jobid).root ../scripts/setup_common.py #../data/templates_$(jobid)_morphed.root ../scripts/setup_andrey.py
-	python ../scripts/setup_common.py ${jobid} --parity=A --masses=${masses}  && touch $@
+morph: ../data/templates_ALL_$(jobid).root
+
+
+#
+#   Workspace and limits
+#
+$(limitdir)/.cards: ../data/templates_ALL_$(jobid).root ../scripts/setup_common.py #../data/templates_$(jobid)_morphed.root ../scripts/setup_andrey.py
+	python ../scripts/setup_common.py ${jobid} --channels=${channel} --parity=A,H --masses=${masses}  && touch $@
 
 cards: $(limitdir)/.cards
 
@@ -46,6 +61,10 @@ $(limitdir)/.limitplots: $(limitdir)/.jsons ../scripts/Httbar_plots.sh
 
 limitplots: $(limitdir)/.limitplots
 
+
+#
+#   Limit diagnostics
+#
 $(limitdir)/.breakdown: $(limitdir)/.workspace ../scripts/systematics_breakdown.py ../scripts/transpose_jsons.py
 	cd .. && scram b && cd - && cd $(limitdir) && \
 	../../scripts/systematics_breakdown.py ${runmode} --masses '[0-9]00' && \
