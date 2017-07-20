@@ -4,6 +4,7 @@ from timeit import default_timer as timer
 from os import path
 from argparse import ArgumentParser
 from numpy import array
+import gc
 
 parser = ArgumentParser()
 parser.add_argument('inputfile')
@@ -29,7 +30,11 @@ ROOT.TH1.AddDirectory(False)
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 # ALL THE DANGEROUS CONSTANTS IN ONE PLACE
-OUTPUT_BINNING = [300.0, 340.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0, 520.0, 540.0, 560.0, 580.0, 600.0, 625.0, 650.0, 675.0, 700.0, 730.0, 760.0, 800.0, 850.0, 900.0, 1000.0, 1200.0]
+OUTPUT_BINNING_LJ = [300.0, 340.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0, 520.0, 540.0, 560.0, 580.0, 600.0, 625.0, 650.0, 675.0, 700.0, 730.0, 760.0, 800.0, 850.0, 900.0, 1000.0, 1200.0]
+OUTPUT_BINNING_LL = [325., 355., 385., 415., 445., 475., 505., 535., 565., 595., 625., 655., 685., 715., 745., 775., 805., 837., 872., 911., 957., 1014., 1094., 1210., 1400.]
+
+OUTPUT_BINNING = OUTPUT_BINNING_LJ if 'templates_lj_' in args.inputfile else OUTPUT_BINNING_LL
+print 'Using mass binning: ', OUTPUT_BINNING
 N_REGIONS = 5
 MIN_MASS = 300.0
 MAX_MASS = 1200.0
@@ -50,6 +55,7 @@ widths = args.widths.split(',')
 outname = args.inputfile.replace('.root', '_%s_morphed_mass.root' % args.parity)
 # shutil.copyfile(args.inputfile, outname)
 infile = ROOT.TFile(args.inputfile)
+ichunk = 0
 outfile = ROOT.TFile(outname, 'RECREATE')
 
 m_ttbar = ROOT.RooRealVar('mass', 'mass', MIN_MASS, MAX_MASS)
@@ -87,7 +93,6 @@ def interpolate(masses, yields, test_mass, linear=True):
     f_low = (test_mass - m_below) / delta_m
     f_high = (m_above - test_mass) / delta_m
     return f_low * y_below + f_high * y_above
-
 
 for channel in [i.GetName() for i in infile.GetListOfKeys()]:
     tdir = infile.Get(channel)
@@ -180,6 +185,10 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
 									channel+h_all.GetName()+str(i_costheta)+"_finebinning",
 									i_costheta+1, i_costheta+1
 									)
+                in_binning = set([h_region.GetBinLowEdge(i) for i in range(1, h_region.GetNbinsX()+2)])
+                for i in OUTPUT_BINNING:
+                    if i not in in_binning:
+                        raise ValueError('Output bin edge %.2f is not included in the input bin edges' % i)
                 d_hists_region[i_costheta][mass] = h_region.Rebin(
 									len(OUTPUT_BINNING) - 1, 
 									h_region.GetName().replace('_finebinning', ''), 
@@ -257,6 +266,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
         # Now collate the hists from the different regions for all masses, including the available
         for test_mass in to_make+available:
             n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
+            #set_trace()
             outfile.cd()
             outdir = outfile.Get(channel)
             outdir.cd()
@@ -272,5 +282,9 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
             # print 'Writing', test_mass, h_out.Integral()
 
         tmp_file.Close()
+        gc.collect()
+        for obj in ROOT.gROOT.GetList(): #kill it, with FIRE!
+            obj.Delete()
+        #set_trace()
         print 'Time elapsed:', timer() - start
     outfile.Write()
