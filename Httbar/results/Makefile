@@ -1,6 +1,6 @@
-jobid=2017Jul03
+jobid=2017Jul20
 runmode=--run blind
-channel=ll
+channel=cmb
 limitdir=output_$(channel)_$(jobid)
 masses=400,450,500,550,600,650,700,750
 
