@@ -54,11 +54,11 @@ ll_shape_uncs = ['CMS_eff_trigger_l']#, 'CMS_eff_e', 'CMS_eff_m']
 
 #tt shapes
 common_tt_shape_uncs = [
-		'pdf', 'QCDscaleFSR_TT', 'QCDscaleISR_TT', 'Hdamp_TT', 
+		'pdf', 'QCDscaleFSR_TT', 'Hdamp_TT', 
 		'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT'
 		]
 ll_shape_uncertainties_tt = ['TopPt1_TT', 'TopPt2_TT']
-lj_shape_uncertainties_tt = [] #missing top pt!
+lj_shape_uncertainties_tt = ['QCDscaleISR_TT'] #missing top pt! #should also LJ remove it?
 #ll/TT_QCDscaleMEFactor_ggH-sgnDown
 #ll/TT_QCDscaleMERenorm_ggH-sgnDown
 
