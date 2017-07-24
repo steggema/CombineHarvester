@@ -1,23 +1,23 @@
 jobid=2017Jul20
 runmode=--run blind
-channel=cmb
+channel=lj
 limitdir=output_$(channel)_$(jobid)
 masses=400,450,500,550,600,650,700,750
 
 #
 #   Morphing and merging
 #
-../data/templates_ll_sig_$(jobid)_A_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../scripts/morph_mass.py
-	cd .. && scram b && cd - && morph_mass.py $< A --algo NonLinearPosFractions --input_masses 400,500,600,750
+../data/templates_ll_sig_$(jobid)_A_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../data/templates_ll_bkg_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $<  $(word 2,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750
 
-../data/templates_lj_sig_$(jobid)_A_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../scripts/morph_mass.py
-	cd .. && scram b && cd - && morph_mass.py $< A --algo NonLinearPosFractions --input_masses 400,500,600,750
+../data/templates_lj_sig_$(jobid)_A_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../data/templates_lj_bkg_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< $(word 2,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750
 
-../data/templates_ll_sig_$(jobid)_H_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../scripts/morph_mass.py
-	cd .. && scram b && cd - && morph_mass.py $< H --algo NonLinearPosFractions --input_masses 400,500,600,750
+../data/templates_ll_sig_$(jobid)_H_morphed_mass.root: ../data/templates_ll_sig_$(jobid).root ../data/templates_ll_bkg_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< $(word 2,$^) H --algo NonLinearPosFractions --input_masses 400,500,600,750
 
-../data/templates_lj_sig_$(jobid)_H_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../scripts/morph_mass.py
-	cd .. && scram b && cd - && morph_mass.py $< H --algo NonLinearPosFractions --input_masses 400,500,600,750
+../data/templates_lj_sig_$(jobid)_H_morphed_mass.root: ../data/templates_lj_sig_$(jobid).root ../data/templates_lj_bkg_$(jobid).root ../scripts/morph_mass.py
+	cd .. && scram b && cd - && morph_mass.py $< $(word 2,$^) H --algo NonLinearPosFractions --input_masses 400,500,600,750
 
 ../data/templates_lj_$(jobid).root: ../data/templates_lj_sig_$(jobid)_A_morphed_mass.root ../data/templates_lj_sig_$(jobid)_H_morphed_mass.root ../data/templates_lj_bkg_$(jobid).root
 	hadd -f -O $@ $^
