@@ -55,7 +55,7 @@ with open(txt) as card:
 			nuisances.add(line.split()[0])
 
 groups = {
-	'BinByBin' 	: ['*_TT_bin_[0-9]*'],
+	'BinByBin' 	: ['*_MCstatBin[0-9]*'],
 	'BTag'     	: ['CMS_*_b_13TeV'],
 	'Leptons'  	: ['CMS_eff_[em]', 'CMS_eff_trigger_[em]'],
 	'JetMET'   	: ['CMS_*_j_13TeV', 'CMS_METunclustered_13TeV'],

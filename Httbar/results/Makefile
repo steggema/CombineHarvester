@@ -1,6 +1,6 @@
-jobid=2017Jul20
+jobid=2017Jul25
 runmode=--run blind
-channel=lj
+channel=cmb
 limitdir=output_$(channel)_$(jobid)
 masses=400,450,500,550,600,650,700,750
 
@@ -65,15 +65,17 @@ limitplots: $(limitdir)/.limitplots
 #
 #   Limit diagnostics
 #
-$(limitdir)/.breakdown: $(limitdir)/.workspace ../scripts/systematics_breakdown.py ../scripts/transpose_jsons.py
+$(limitdir)/.breakdown: $(limitdir)/.workspace ../scripts/systematics_breakdown.py
 	cd .. && scram b && cd - && cd $(limitdir) && \
-	../../scripts/systematics_breakdown.py ${runmode} --masses '[0-9]00' && \
-	transpose_jsons.py *_A_[0-9]*.json && cd - && touch $@
+	../../scripts/systematics_breakdown.py ${runmode} --masses '[3-6]00' && \
+	../../scripts/systematics_breakdown.py ${runmode} --masses '750' && \
+	cd - && touch $@
 
 breakdown: $(limitdir)/.breakdown
 
-$(limitdir)/.breakdownplots: $(limitdir)/.breakdown $(limitdir)/.jsons ../scripts/breakdown_plots.sh
-	cd .. && scram b && cd - && cd $(limitdir) && mkdir -p plots && breakdown_plots.sh && cd - && touch $@
+$(limitdir)/.breakdownplots: $(limitdir)/.breakdown $(limitdir)/.jsons ../scripts/breakdown_plots.sh ../scripts/transpose_jsons.py
+	cd .. && scram b && cd - && cd $(limitdir) && transpose_jsons.py *_?_[0-9]*.json && \
+	mkdir -p plots && breakdown_plots.sh && cd - && touch $@
 
 breakdownplots: $(limitdir)/.breakdownplots
 
