@@ -8,6 +8,7 @@ import gc
 
 parser = ArgumentParser()
 parser.add_argument('inputfile')
+parser.add_argument('bkgfile', help='used to check binning consistency')
 parser.add_argument('parity', choices=['A', 'H'], help='parity of the resonance')
 parser.add_argument('--algo', default='NonLinearPosFractions',
 										choices=['Linear', 'NonLinear', 'NonLinearPosFractions', 'NonLinearLinFractions', 'SineLinear'],
@@ -30,14 +31,17 @@ ROOT.TH1.AddDirectory(False)
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 # ALL THE DANGEROUS CONSTANTS IN ONE PLACE
+isLJ = ('templates_lj_' in args.inputfile)
 OUTPUT_BINNING_LJ = [300.0, 340.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0, 520.0, 540.0, 560.0, 580.0, 600.0, 625.0, 650.0, 675.0, 700.0, 730.0, 760.0, 800.0, 850.0, 900.0, 1000.0, 1200.0]
 OUTPUT_BINNING_LL = [325., 355., 385., 415., 445., 475., 505., 535., 565., 595., 625., 655., 685., 715., 745., 775., 805., 837., 872., 911., 957., 1014., 1094., 1210., 1400.]
 
-OUTPUT_BINNING = OUTPUT_BINNING_LJ if 'templates_lj_' in args.inputfile else OUTPUT_BINNING_LL
+OUTPUT_BINNING = OUTPUT_BINNING_LJ if isLJ else OUTPUT_BINNING_LL
 print 'Using mass binning: ', OUTPUT_BINNING
 N_REGIONS = 5
-MIN_MASS = 300.0
-MAX_MASS = 1200.0
+MIN_MASS = 250.0 if isLJ else 325.0
+MAX_MASS = 1200.0 if isLJ else 1400.0
+
+bkgfile = ROOT.TFile(args.bkgfile)
 
 # Yield interpolation by hand (true) or via RooMorph (false)
 do_interpolate = False if not args.interpolate or args.interpolate=='False' else True
@@ -95,6 +99,15 @@ def interpolate(masses, yields, test_mass, linear=True):
     return f_low * y_below + f_high * y_above
 
 for channel in [i.GetName() for i in infile.GetListOfKeys()]:
+    #check for binning consistency
+    ttshape = bkgfile.Get('%s/TT' % channel) 
+    if not ttshape:
+        raise RuntimeError('The provided background file does not include the TT shape for the channel %s' % channel)
+    shape_bins = ttshape.GetNbinsX()
+    n_bins = (len(OUTPUT_BINNING)-1)*N_REGIONS
+    if shape_bins != n_bins:
+        raise RuntimeError('The output binning for the signal (%d bins) does not match the one of the background shapes (%d bins)' % (n_bins, shape_bins))
+    
     tdir = infile.Get(channel)
     tdir.cd()
     outfile.mkdir(channel)

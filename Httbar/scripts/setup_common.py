@@ -46,19 +46,20 @@ lumi_unc = 1.025
 #shape
 common_shape_uncs = ['CMS_pileup', 'CMS_eff_b_13TeV', 'CMS_fake_b_13TeV', 'CMS_scale_j_13TeV', 'CMS_res_j_13TeV']
 lj_by_lepton_uncs = {
-	'mu' : ['CMS_eff_m'],
-	'el' : ['CMS_eff_e']
+	'mu' : ['CMS_eff_trigger_m', 'CMS_eff_m'],
+	'el' : ['CMS_eff_trigger_e', 'CMS_eff_e']
 }
 lj_shape_uncs = ['CMS_METunclustered_13TeV'] #trigger is missing!
-ll_shape_uncs = ['CMS_eff_trigger_l']#, 'CMS_eff_e', 'CMS_eff_m']
+ll_shape_uncs = ['CMS_eff_trigger_l', 'CMS_eff_e', 'CMS_eff_m']
 
 #tt shapes
 common_tt_shape_uncs = [
 		'pdf', 'QCDscaleFSR_TT', 'Hdamp_TT', 
-		'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT'
+		'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT',
+		'CMS_TopPt1_TT', 'CMS_TopPt2_TT'
 		]
-ll_shape_uncertainties_tt = ['TopPt1_TT', 'TopPt2_TT']
-lj_shape_uncertainties_tt = ['QCDscaleISR_TT'] #missing top pt! #should also LJ remove it?
+ll_shape_uncertainties_tt = []
+lj_shape_uncertainties_tt = [] #missing top pt! #should also LJ remove it?
 #ll/TT_QCDscaleMEFactor_ggH-sgnDown
 #ll/TT_QCDscaleMERenorm_ggH-sgnDown
 
@@ -132,7 +133,7 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 	# GENERIC SHAPE UNCERTAINTIES
 	for shape_uncertainty in common_shape_uncs+ll_shape_uncs:
 		cb.cp().process(
-			procs['bkg'] + procs['sig']# FIXME! 
+			procs['bkg'] + procs['sig']
 			).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, 1.))
 
 	# SPECIFIC SHAPE UNCERTAINTIES
