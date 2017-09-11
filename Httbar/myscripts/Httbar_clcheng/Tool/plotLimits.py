@@ -2,7 +2,6 @@
 import ROOT
 import CombineHarvester.CombineTools.plotting as plot
 import argparse
-from math import *
 from pdb import set_trace
 # import CombineHarvester.CombineTools.maketable as maketable
 
@@ -41,14 +40,19 @@ parser.add_argument(
 parser.add_argument(
     '--pad-style', default=None, help="""Extra style options for the pad, e.g. Grid=(1,1)""")
 parser.add_argument(
-    '--grid', action='store_true', help="""Extra style options for the pad, e.g. Grid=(1,1)""")
-parser.add_argument(
-    '--mapping', default='lambda x: x', help="""mapping for the obtained limit values""")
-parser.add_argument(
     '--auto-style', nargs='?', const='', default=None, help="""Take line colors and styles from a pre-defined list""")
 parser.add_argument('--table_vals', help='Amount of values to be written in a table for different masses', default=10)
+parser.add_argument(
+    '--shade', action='store_true', help="""Shade area below median""")
+parser.add_argument(
+    '--mask', default = None,type=float, help="""Mask extrapolated region""")
+parser.add_argument(
+    '--merge', default = None,type=float, help="""Mask merged region of mA mH exclusion""")    
+parser.add_argument(
+    '--ymax', default = None, type=float, help="""Max value of y axis""")    
 args = parser.parse_args()
-mapping = eval(args.mapping)
+
+
 
 def DrawAxisHists(pads, axis_hists, def_pad=None):
     for i, pad in enumerate(pads):
@@ -75,10 +79,7 @@ else:
 # Set the style options of the pads
 for padx in pads:
     # Use tick marks on oppsite axis edges
-    plot.Set(padx, Tickx=1, Ticky=1, Logx=args.logx)		
-    if args.grid:
-        padx.SetGridx()				
-        padx.SetGridy()				
+    plot.Set(padx, Tickx=1, Ticky=1, Logx=args.logx)
     if args.pad_style is not None:
         settings = {x.split('=')[0]: eval(x.split('=')[1]) for x in args.pad_style.split(',')}
         print 'Applying style options to the TPad(s):'
@@ -114,7 +115,7 @@ for src in args.input:
     file = splitsrc[0]
     # limit.json => Draw as full obs + exp limit band
     if len(splitsrc) == 1:
-        graph_sets.append(plot.StandardLimitsFromJSONFile(file, args.show.split(','), mapping))
+        graph_sets.append(plot.StandardLimitsFromJSONFile(file, args.show.split(',')))
         if axis is None:
             axis = plot.CreateAxisHists(len(pads), graph_sets[-1].values()[0], True)
             DrawAxisHists(pads, axis, pads[0])
@@ -123,7 +124,19 @@ for src in args.input:
         pads[0].RedrawAxis()
         pads[0].RedrawAxis('g')
         pads[0].GetFrame().Draw()
-
+        if args.shade:
+         X = graph_sets[-1]['exp0'].GetX()
+         Y = graph_sets[-1]['exp0'].GetY()
+         n = graph_sets[-1]['exp0'].GetN()
+         X.SetSize(n)
+         Y.SetSize(n)
+         g = ROOT.TGraph(2*n)
+         for i,(x,y) in enumerate(zip(X,Y)):
+          g.SetPoint(i,X[i],y)
+          g.SetPoint(n+i,X[n-i-1],0)
+         g.SetFillStyle(3013)
+         g.SetFillColor(17)
+         g.Draw("f")
     # limit.json:X => Draw a single graph for entry X in the json file 
     # 'limit.json:X:Title="Blah",LineColor=4,...' =>
     # as before but also apply style options to TGraph
@@ -143,24 +156,21 @@ for src in args.input:
             icol[nm] = (i+1) if (i+1) < len(defcols) else 0
         graphs.append(plot.LimitTGraphFromJSONFile(file, splitsrc[1]))
         if len(splitsrc) >= 3:
-            try:
-             settings.update({x.split('=')[0]: eval(x.split('=')[1]) for x in splitsrc[2].split(',')})
-            except:
-             set_trace()             
+            settings.update({x.split('=')[0]: eval(x.split('=')[1]) for x in splitsrc[2].split(',')})
         plot.Set(graphs[-1], **settings)
         if axis is None:
             axis = plot.CreateAxisHists(len(pads), graphs[-1], True)
             DrawAxisHists(pads, axis, pads[0])
         graphs[-1].Draw('PLSAME')
-        graphs[-1].SetFillColor(16)
-        graphs[-1].SetFillStyle(3013)
         legend.AddEntry(graphs[-1], '', 'PL')
 
 
 axis[0].GetYaxis().SetTitle('95%% CL limit on %s' % args.limit_on)
 if args.y_title is not None:
     axis[0].GetYaxis().SetTitle(args.y_title)
+    axis[0].GetYaxis().CenterTitle(True)
 axis[0].GetXaxis().SetTitle(args.x_title)
+axis[0].GetXaxis().CenterTitle(True)
 axis[0].GetXaxis().SetLabelOffset(axis[0].GetXaxis().GetLabelOffset()*2)
 
 if args.logy:
@@ -170,14 +180,14 @@ if args.logy:
     # axis[0].SetNdivisions(50005, "X")
 
 y_min, y_max = (plot.GetPadYMin(pads[0]), plot.GetPadYMax(pads[0]))
-plot.FixBothRanges(pads[0], y_min if args.logy else 0, 0.05 if args.logy else 0, y_max, 0.25)
+plot.FixBothRanges(pads[0], y_min if args.logy else 0, 0.05 if args.logy else 0, y_max if args.ymax is None else args.ymax, 0.25)
 
 ratio_graph_sets = []
 ratio_graphs = []
+
 if args.ratio_to is not None:
     pads[1].cd()
     plot.SetupTwoPadSplitAsRatio(pads, axis[0], axis[1], 'Ratio_{}', True, 0.1, 2.4)
-    set_trace()
     axis[1].SetNdivisions(506, 'Y')
     splitsrc = args.ratio_to.split(':')
     ref = plot.LimitTGraphFromJSONFile(splitsrc[0], splitsrc[1])
@@ -196,12 +206,17 @@ if args.ratio_to is not None:
     ry_min, ry_max = (plot.GetPadYMin(pads[1]), plot.GetPadYMax(pads[1]))
     plot.FixBothRanges(pads[1], ry_min, 0.1, ry_max, 0.1)
 
+
 pads[0].cd()
 if legend.GetNRows() == 1:
     legend.SetY1(legend.GetY2() - 0.5*(legend.GetY2()-legend.GetY1()))
 legend.Draw()
 
-axis[0].GetYaxis().SetRange(0,2)
+# line = ROOT.TLine()
+# line.SetLineColor(ROOT.kBlue)
+# line.SetLineWidth(2)
+# plot.DrawHorizontalLine(pads[0], line, 1)
+
 box = ROOT.TPave(pads[0].GetLeftMargin(), 0.81, 1-pads[0].GetRightMargin(), 1-pads[0].GetTopMargin(), 1, 'NDC')
 box.Draw()
 
@@ -210,15 +225,18 @@ legend.Draw()
 plot.DrawCMSLogo(pads[0], 'CMS', args.cms_sub, 11, 0.045, 0.035, 1.2, '', 0.8)
 plot.DrawTitle(pads[0], args.title_right, 3)
 plot.DrawTitle(pads[0], args.title_left, 1)
-#set_trace()
-canv.cd()
 
-set_trace()
-#t = ROOT.TBox(0.16,0.12,0.185,0.81)
-#t.SetFillColorAlpha(ROOT.kRed-9,0.4)
-#t.Draw()
-
-#set_trace()
+if args.mask is not None:
+ t = ROOT.TBox(1,0,2.5,args.mask)
+ t.SetFillColorAlpha(ROOT.kRed-9,0.4)
+ t.Draw()
+ t1 = ROOT.TBox(0,0,1,args.mask)
+ t1.SetFillColorAlpha(ROOT.kBlue-9,0.4)
+ t1.Draw()
+if args.merge is not None:
+ t = ROOT.TBox(365.234375,0,400,args.merge)
+ t.SetFillColorAlpha(ROOT.kRed-9,0.4)
+ t.Draw()
 canv.Print('.pdf')
 canv.Print('.png')
 # maketable.TablefromJson(args.table_vals, args.file, "TablefromJson.txt")
