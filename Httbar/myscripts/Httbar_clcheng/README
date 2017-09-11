@@ -1,0 +1,8 @@
+To make exclusion in the [mA,tanb] plane starting from templates_ALL_2017Jul25.root:
+1. Do the width extrapolation at 1pc by running:
+> python morph_width_extrapolate.py templates_ALL_2017Jul25.root --width 1 --refwidth 2.5 --sgnfactor 2.524551213 --intfactor 1.
+#where "width" is the width to extrapolalte, "refwidth" is the width of the signal and background shapes that will be scaled to obtain the shapes at the extrapolated width, "sgnfactor" is the scaling factor for signal shapes, "intfactor" is the scaling factor for interference shapes : new shapes = reference shapes * scale factor
+2. Do the width morphing with a binning of 0.5 pc, you may need to run the modified morph_width.py code in Tool/ :
+> python morph_width templates_ALL_2017Jul25.root
+#In the modified code, the option for interpolation is removed: hyperbolic and linear interpolation is automatically assumed for signal and interference shapes respectively; the dictionary "mapping" has the 1pc width included; the dictionary "new_points" are created directly from numpy.arange
+3. 
