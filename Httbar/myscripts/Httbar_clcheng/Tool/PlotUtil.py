@@ -91,6 +91,10 @@ def TH2FixAxisPlot( hist, step, Xfix = None, Yfix = None, XaxisTitle= "", YaxisT
  if output != "":
   canv.SaveAs(".pdf")
  return g, zip(x,y)
+ 
+def Interpolate(arr, value):
+ x,y = zip(*arr)
+ return scipy.interpolate.interp1d(x,y)(value)
 
 #Input a list containing tuples of bin content and return a list of x bins that has values equal to the input value
 def InverseInterpolate(arr, value):

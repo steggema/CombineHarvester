@@ -1,9 +1,8 @@
 #!/bin/bash
-scaling="2017Jul25_100"
-limitdir="/afs/cern.ch/work/c/clcheng/LAST/scaled_1000/data/output_cmb_2017Jul25_noBBB/"
-hMSSMdir="$CMSSW_BASE/src/CombineHarvester/Httbar/results/Analysis/"
-scriptdir="$CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/"
-refdir="$CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/"
+limitdir="/afs/cern.ch/work/c/clcheng/LAST/scaled_1000/data/output_cmb_2017Jul25"
+hMSSMdir="$CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/Httbar_clcheng/MakeExclusion/hMSSM_SusHi/"
+scriptdir="$CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/Httbar_clcheng/MakeExclusion"
+refdir="$CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/Httbar_clcheng/SusHi/results/"
 higgs=("A" "H")
 
 python $CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/limit_jsons_in_width.py $limitdir -o $limitdir

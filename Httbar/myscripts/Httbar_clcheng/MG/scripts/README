@@ -1,0 +1,11 @@
+MG_automate.sh:
+-Example
+#IMPORTANT: Please specify the type of Higgs boson in the script, default is pseudoscalar A
+> ./MG_automate.sh input.txt
+-Usage: Automate the calculation of xs using MG with the input parameters as input.txt, see example at ./MG/ggA_sgn/results/k-factor/input/input.txt
+
+MG_read.py:
+-Example
+> python MG_read.py ~/local/MG5_aMC_v2_5_5/bin/ggH_sgn --higgs A
+> python MG_read.py ~/local/MG5_aMC_v2_5_5/bin/ggH_sgn --higgs H
+-Usage: Read out all the MG xs output and save it in a txt file

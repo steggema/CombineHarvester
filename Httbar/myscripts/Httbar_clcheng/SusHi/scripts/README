@@ -1,0 +1,22 @@
+Map_2HDMC_in.py:
+-Usage: It maps the result from 2HDMC calculator to the corresponding parameter values in the input file of SusHi, e.g. 2HDMC_physicalbasis.in
+
+SusHi_automate.sh:
+#Used with an input.txt file as input parameters for mass and tanb (See examples in ./SusHi/results/ggA_sgn/scan_NNLO/input/input.txt)
+-Example
+#IMPORTANT: Please specify the type of Higgs boson by editing the line > h="12" # 11 = h, 12 = H, 21 = A
+#You may also change the order of calculation by editing the shell script
+> ./SusHi_automate.sh input.txt
+-Usage: Automatically calculate the cross-sections (which also returns the widths) for all the input mass and tanb values
+
+SusHi_read.py:
+-Example
+> python SusHi_read.py ./path-to-output-files/ --higgs A -o SusHi_mA_out.txt
+> python SusHi_read.py ./path-to-output-files/ --higgs H -o SusHi_mH_out.txt
+-Usage: It reads the output xs and widths from the SusHi output and save all output values into a txt file
+
+MakeSusHi.py:
+-Example
+> python MakeSusHi.py SusHi_mA_out.txt --higgs A
+> python MakeSusHi.py SusHi_mH_out.txt --higgs H
+-Usage: It creates a root file containing histograms for xs and width and coupling with x and y axis being mass and tanb

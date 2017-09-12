@@ -1,0 +1,3 @@
+Example:
+> python shape_ratio.py templates_ALL*.root --masses 400 500 600 750 --widths 2.5:5 --type sgn,-int- --higgs A,H
+-Usage: Evaluate the ratio of peak values of shapes between two different widths, e.g. "--widths 2.5:5" will evaluate ratio of peak values of shape between 2.5pc and 5pc widths 

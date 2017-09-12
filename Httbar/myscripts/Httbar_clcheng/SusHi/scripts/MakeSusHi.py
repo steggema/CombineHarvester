@@ -7,13 +7,13 @@ parser.add_argument(
 parser.add_argument(
     '--output', '-o', default = "./SusHi_width_xs",help="""Name of the output root file (without extension)""")
 parser.add_argument(
-    '--higgs', '-h', default = "A",help="""Type of Higgs boson (A or H)""")
+    '--higgs', default = "A",help="""Type of Higgs boson (A or H)""")
 args = parser.parse_args()
 
 
 dat = [map(float,i.split()) for i in open(args.input).readlines() if not i.startswith("#")]
 
-f = ROOT.TFile("{0}.root".format(args.output),"RECREATE")
+f = ROOT.TFile("{0}_{1}.root".format(args.output,args.higgs),"RECREATE")
 
 masses = set([i[0] for i in dat])
 tanbs = set([i[1] for i in dat])
