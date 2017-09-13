@@ -3,7 +3,7 @@
 set -o nounset
 set -o errexit
 
-for json in $(ls -d limits_*.json); do
+for json in $(ls -d XSections_*.json); do
 		#remove "limits"
 		mode_width=`echo "${json#*_}" | sed 's|.json||g'`
 		ah="${mode_width%_*}"

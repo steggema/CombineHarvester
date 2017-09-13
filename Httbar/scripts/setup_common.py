@@ -307,6 +307,7 @@ if __name__ == '__main__':
 
 	aux_shapes = args.indir
 	#set_trace()
+
 	in_file = aux_shapes + 'templates_ALL_%s.root' % args.jobid
 	in_file_lj = aux_shapes + 'templates_lj_%s.root' % args.jobid
 	in_file_ll = aux_shapes + 'templates_ll_%s.root' % args.jobid

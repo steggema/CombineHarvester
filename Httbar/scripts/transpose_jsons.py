@@ -43,10 +43,11 @@ for basename, jsons in bases.iteritems():
 	for mass in masses:
 		mjson = {}
 		for width in widths:
-                        try:
-			 mjson[width] = jmap[width][mass]
-                        except:
-                         set_trace()
+
+			try:
+				mjson[width] = jmap[width][mass]
+			except:
+			    set_trace()
 		with open('%s_M%d.json' % (basename, mmap(mass)), 'w') as out:
 			out.write(json.dumps(mjson))
 	
