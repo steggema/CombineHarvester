@@ -1,0 +1,10 @@
+map_mH_mA_2HDMC.py:
+-Example:
+> python /path-to-2HDMC-Calc/CalcHMSSM --mass 400-750:50 --tanb 0.8-50:0.1 -p 0.1 -r 200
+-Usage: It maps the values of mH, sina and sinb from mA and tanb within the 2HDM. "-p" specify the precision of mapped mH; "-r" specify the range of mass for initial bisection guess;
+
+"--mass 400-750:50" refers to masses from 400 to 750 GeV with 50 GeV binning
+"--tanb 0.8-50:0.1" refers to tanb from 0.8 to 50 with 0.1 binning
+#You can also specify individual masses/tanb by writing
+--mass 400,500,600,750
+--tanb 0.5,1,1.5

@@ -1,0 +1,5 @@
+ConstrainBBB.sh:
+-Usage: create the workspace.root file with the lumiscale parameter and a regular expression that scales the constraints on the nuisance parameters
+
+Httbar_limits.sh:
+-Usage: Run the Asymptotic CLs limit with freezing lumiscale and dynamic scaling of nuisance parameter constraints

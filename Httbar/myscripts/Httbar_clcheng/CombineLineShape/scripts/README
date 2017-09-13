@@ -1,0 +1,4 @@
+-Example
+> python combine_shape.py templates_ALL*.root --masses 400,500,600,750 --widths 2.5,5 --higgs A
+> python combine_shape.py templates_ALL*.root --masses 400,500,600,750 --widths 2.5,5 --higgs H
+-Usage: Combine signal and interference shapes at a particular mass and widths 
