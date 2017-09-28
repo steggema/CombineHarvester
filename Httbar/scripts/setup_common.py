@@ -44,12 +44,39 @@ lj_theory_uncs = [
 lumi_unc = 1.025
 
 #shape
-common_shape_uncs = ['CMS_pileup', 'CMS_eff_b_13TeV', 'CMS_fake_b_13TeV', 'CMS_scale_j_13TeV', 'CMS_res_j_13TeV']
+common_shape_uncs = [
+	'CMS_pileup', 
+	#BTAG
+	'CMS_eff_b_13TeV', 
+	'CMS_fake_b_13TeV', 
+	#JES
+	'CMS_scale_j_13TeV_AbsoluteStat',
+	'CMS_scale_j_13TeV_AbsoluteScale',
+	'CMS_scale_j_13TeV_AbsoluteMPFBias',
+	'CMS_scale_j_13TeV_Fragmentation',
+	'CMS_scale_j_13TeV_SinglePionECAL',
+	'CMS_scale_j_13TeV_SinglePionHCAL',
+	'CMS_scale_j_13TeV_FlavorQCD',
+	'CMS_scale_j_13TeV_TimePtEta',
+	'CMS_scale_j_13TeV_RelativeJEREC1',
+	'CMS_scale_j_13TeV_RelativePtBB',
+	'CMS_scale_j_13TeV_RelativePtEC1',
+	'CMS_scale_j_13TeV_RelativeBal',
+	'CMS_scale_j_13TeV_RelativeFSR',
+	'CMS_scale_j_13TeV_RelativeStatFSR',
+	'CMS_scale_j_13TeV_RelativeStatEC',
+	'CMS_scale_j_13TeV_PileUpDataMC',
+	'CMS_scale_j_13TeV_PileUpPtRef',
+	'CMS_scale_j_13TeV_PileUpPtBB',
+	'CMS_scale_j_13TeV_PileUpPtEC1',
+	#JER
+	'CMS_res_j_13TeV'
+]
 lj_by_lepton_uncs = {
 	'mu' : ['CMS_eff_trigger_m', 'CMS_eff_m'],
 	'el' : ['CMS_eff_trigger_e', 'CMS_eff_e']
 }
-lj_shape_uncs = ['CMS_METunclustered_13TeV'] #trigger is missing!
+lj_shape_uncs = ['CMS_METunclustered_13TeV']
 ll_shape_uncs = ['CMS_eff_trigger_l', 'CMS_eff_e', 'CMS_eff_m']
 
 #tt shapes
