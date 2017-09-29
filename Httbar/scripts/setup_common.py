@@ -288,7 +288,7 @@ def performMorphing(cb, procs, m_min=400., m_max=750., mass_debug=False):
 	#			   RooAbsReal& mass_var, std::string norm_postfix,
 	#			   bool allow_morph, bool verbose, bool force_template_limit, TFile * file)
 
-def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=True):
+def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=True, limitdir = ""):
 	print '>> Setting standardised bin names...'
 	ch.SetStandardBinNames(cb)
 	
@@ -305,7 +305,10 @@ def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=Tr
 		writer.SetWildcardMasses([])
 	
 	writer.SetVerbosity(1 if verbose else 0)
-	writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=jobid, mode=mode, width=width), cb)
+	if limitdir == "":
+	 writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=jobid, mode=mode, width=width), cb)
+	else:
+	 writer.WriteCards('{limitdir}/{mode}_{width}'.format(limitdir=limitdir, mode=mode, width=width), cb)
 	# writer.WriteCards('output_comb/', cb)
 
 
@@ -322,12 +325,16 @@ if __name__ == '__main__':
 		'--doMorph', action='store_true', dest='doMorph', help='apply mass morphing', default=False)
 	parser.add_argument(
 		'--silent', action='store_true', dest='silent', default=False)
+	parser.add_argument('--indir', default=os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/', help='Input directories containing the data files')
+	parser.add_argument('--limitdir', default="", help='Output limit directories') 
 
 	args = parser.parse_args()
 	addBBB = args.addBBB
 	doMorph = args.doMorph
 
-	aux_shapes = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/'
+	aux_shapes = args.indir
+	#set_trace()
+
 	in_file = aux_shapes + 'templates_ALL_%s.root' % args.jobid
 	in_file_lj = aux_shapes + 'templates_lj_%s.root' % args.jobid
 	in_file_ll = aux_shapes + 'templates_ll_%s.root' % args.jobid
@@ -377,7 +384,7 @@ if __name__ == '__main__':
 				f_masses = [float(m) for m in masses]
 				performMorphing(cb, procs, min(f_masses), max(f_masses))
 
-			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode, width, doMorph, verbose=not args.silent)
+			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode, width, doMorph, verbose=not args.silent,limitdir = args.limitdir)
 
 	print '>> Done!'
 

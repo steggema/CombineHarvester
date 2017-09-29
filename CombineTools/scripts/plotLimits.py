@@ -143,12 +143,17 @@ for src in args.input:
             icol[nm] = (i+1) if (i+1) < len(defcols) else 0
         graphs.append(plot.LimitTGraphFromJSONFile(file, splitsrc[1]))
         if len(splitsrc) >= 3:
-            settings.update({x.split('=')[0]: eval(x.split('=')[1]) for x in splitsrc[2].split(',')})
+            try:
+             settings.update({x.split('=')[0]: eval(x.split('=')[1]) for x in splitsrc[2].split(',')})
+            except:
+             set_trace()             
         plot.Set(graphs[-1], **settings)
         if axis is None:
             axis = plot.CreateAxisHists(len(pads), graphs[-1], True)
             DrawAxisHists(pads, axis, pads[0])
         graphs[-1].Draw('PLSAME')
+        graphs[-1].SetFillColor(16)
+        graphs[-1].SetFillStyle(3013)
         legend.AddEntry(graphs[-1], '', 'PL')
 
 
@@ -169,10 +174,10 @@ plot.FixBothRanges(pads[0], y_min if args.logy else 0, 0.05 if args.logy else 0,
 
 ratio_graph_sets = []
 ratio_graphs = []
-
 if args.ratio_to is not None:
     pads[1].cd()
     plot.SetupTwoPadSplitAsRatio(pads, axis[0], axis[1], 'Ratio_{}', True, 0.1, 2.4)
+    set_trace()
     axis[1].SetNdivisions(506, 'Y')
     splitsrc = args.ratio_to.split(':')
     ref = plot.LimitTGraphFromJSONFile(splitsrc[0], splitsrc[1])
@@ -191,17 +196,12 @@ if args.ratio_to is not None:
     ry_min, ry_max = (plot.GetPadYMin(pads[1]), plot.GetPadYMax(pads[1]))
     plot.FixBothRanges(pads[1], ry_min, 0.1, ry_max, 0.1)
 
-
 pads[0].cd()
 if legend.GetNRows() == 1:
     legend.SetY1(legend.GetY2() - 0.5*(legend.GetY2()-legend.GetY1()))
 legend.Draw()
 
-# line = ROOT.TLine()
-# line.SetLineColor(ROOT.kBlue)
-# line.SetLineWidth(2)
-# plot.DrawHorizontalLine(pads[0], line, 1)
-
+axis[0].GetYaxis().SetRange(0,2)
 box = ROOT.TPave(pads[0].GetLeftMargin(), 0.81, 1-pads[0].GetRightMargin(), 1-pads[0].GetTopMargin(), 1, 'NDC')
 box.Draw()
 
@@ -210,7 +210,15 @@ legend.Draw()
 plot.DrawCMSLogo(pads[0], 'CMS', args.cms_sub, 11, 0.045, 0.035, 1.2, '', 0.8)
 plot.DrawTitle(pads[0], args.title_right, 3)
 plot.DrawTitle(pads[0], args.title_left, 1)
+#set_trace()
+canv.cd()
 
+set_trace()
+#t = ROOT.TBox(0.16,0.12,0.185,0.81)
+#t.SetFillColorAlpha(ROOT.kRed-9,0.4)
+#t.Draw()
+
+#set_trace()
 canv.Print('.pdf')
 canv.Print('.png')
 # maketable.TablefromJson(args.table_vals, args.file, "TablefromJson.txt")

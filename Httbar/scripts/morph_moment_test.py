@@ -28,7 +28,7 @@ for channel in ['ejets', 'mujets']:
 			vd = TVectorD(len(other_masses))
 			for i_m, mass in enumerate(other_masses):
 				h_ori = f_ori.Get('{channel}/ggA_{pattern}-{width}pc-M{mass}'.format(channel=channel, pattern=pattern, width=width, mass=mass))
-				h_ori.Scale(1./h_ori.Integral())
+				# h_ori.Scale(1./h_ori.Integral())
 				data_hist = RooDataHist('m'+h_ori.GetName(), '', RooArgList(m_ttbar), h_ori, 1.)
 				pdf = RooHistPdf('pdf_m'+h_ori.GetName(), '', RooArgSet(m_ttbar), data_hist)
 				pdfs.add(pdf)
@@ -52,10 +52,10 @@ for channel in ['ejets', 'mujets']:
 			h_ori_down = f_ori.Get('{channel}/ggA_{pattern}-{width}pc-M{mass}'.format(channel=channel, pattern=pattern, width=width, mass=other_masses[0]))
 			h_ori_up = f_ori.Get('{channel}/ggA_{pattern}-{width}pc-M{mass}'.format(channel=channel, pattern=pattern, width=width, mass=other_masses[1]))
 
-			h_ori.Scale(1./h_ori.Integral())
+			# h_ori.Scale(1./h_ori.Integral())
 
-			h_ori_down.Scale(1./h_ori_down.Integral())
-			h_ori_up.Scale(1./h_ori_up.Integral())
+			# h_ori_down.Scale(1./h_ori_down.Integral())
+			# h_ori_up.Scale(1./h_ori_up.Integral())
 
 			for i_bin in xrange(h_ori.GetNbinsX()):
 				x = h_ori.GetBinCenter(i_bin+1)
