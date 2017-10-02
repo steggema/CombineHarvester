@@ -1116,6 +1116,8 @@ void CombineHarvester::WriteDatacard(std::string const& name,
     txt_file << "\n";
   }
 
+  txt_file << "* autoMCStats 0\n";
+
   txt_file.close();
 }
 
