@@ -19,6 +19,8 @@ parser.add_argument('--widths', default='2p5,5,10,25,50',
                     help='comma separated list of widths')
 parser.add_argument('--stepsize', default='50')
 parser.add_argument('--interpolate', default='True')
+parser.add_argument('--fortesting', type=int, default=0)
+parser.add_argument('--single', type=int, default=0)
 
 args = parser.parse_args()
 
@@ -47,16 +49,29 @@ bkgfile = ROOT.TFile(args.bkgfile)
 do_interpolate = False if not args.interpolate or args.interpolate=='False' else True
 
 available = sorted([int(m) for m in args.input_masses.split(',')])
+if args.single:
+	available = [args.single]
 stepsize = int(args.stepsize)
 to_make = [min(available) + (i + 1) *
            stepsize for i in xrange((max(available) - min(available)) / stepsize)]
 to_make = [m for m in to_make if m not in available]
+if args.fortesting:
+	to_make = [args.fortesting]
+	available.remove(args.fortesting)
+if args.single:
+	if args.single not in available:
+		raise RuntimeError('I cannot dump a single point which is not available, maybe you meant to use --fortesting?')
+
 print 'Output masses:', to_make
 
 widths = args.widths.split(',')
 # widths = ['5', '10', '25', '50']
 
 outname = args.inputfile.replace('.root', '_%s_morphed_mass.root' % args.parity)
+if args.single:
+	outname = outname.replace('morphed_mass', 'M%d' % args.single)
+if args.fortesting:
+	outname = outname.replace('morphed_mass', 'mass_morph_testing')
 # shutil.copyfile(args.inputfile, outname)
 infile = ROOT.TFile(args.inputfile)
 ichunk = 0
@@ -112,7 +127,8 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
     tdir.cd()
     outfile.mkdir(channel)
     h_names = set([key.GetName().replace('400', '{MASS}').replace('500', '{MASS}').replace('600', '{MASS}').replace('750', '{MASS}') for key in tdir.GetListOfKeys()])		
-    #h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
+    if args.fortesting or args.single:
+        h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
     h_names = set([i for i in h_names if not i.endswith('_') and i.startswith('gg%s' % args.parity)])
     print 'Processing', len(h_names), 'different signal templates'
     for h_name in h_names: # it's not very nice - somehow need to make sure we extract all the histogram name but the mass
@@ -236,7 +252,6 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
             for test_mass in to_make:
                 m_A.setVal(float(test_mass))
                 tmp_file.cd()
-                #set_trace()
                 h_morph_region = h_region.Clone(
                     'MORPH' + h_region.GetName().replace('_finebinning', '').replace(str(available[-1]), str(test_mass)))
 
@@ -253,8 +268,11 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                     h_morph_region.SetBinContent(
                         i_bin + 1, morph.getVal() * h_morph_region.GetBinWidth(i_bin + 1))
                 
-                h_morph_region_rebin = h_morph_region.Rebin(len(
-                    OUTPUT_BINNING) - 1, h_morph_region.GetName().replace('MORPH', ''), array(OUTPUT_BINNING))
+                h_morph_region_rebin = h_morph_region.Rebin(
+									len(OUTPUT_BINNING) - 1, 
+									h_morph_region.GetName().replace('MORPH', ''), 
+									array(OUTPUT_BINNING)
+									)
 
                 if do_interpolate:
                     scale = interpolate(available, yields, test_mass)
@@ -278,6 +296,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
         
         # Now collate the hists from the different regions for all masses, including the available
         for test_mass in to_make+available:
+            if args.fortesting and test_mass != args.fortesting: continue
             n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
             #set_trace()
             outfile.cd()
