@@ -89,17 +89,19 @@ impacts: $(limitdir)/.impacts
 #
 
 #mass morph check
-$(limitdir)/.mass_morph_check:  ../data/templates_lj_sig_$(jobid).root ../data/templates_lj_bkg_$(jobid).root ../data/templates_ll_sig_$(jobid).root ../data/templates_ll_bkg_$(jobid).root ../scripts/morph_mass.py ../scripts/plot_mass_morph_check.py
+$(limitdir)/.morph_checks:  ../data/templates_lj_sig_$(jobid).root ../data/templates_lj_bkg_$(jobid).root ../data/templates_ll_sig_$(jobid).root ../data/templates_ll_bkg_$(jobid).root ../scripts/morph_mass.py ../scripts/morph_widths.py ../scripts/plot_morph_check.py
 	cd .. && scram b && cd - && \
 	morph_mass.py $<  $(word 2,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single 500 && \
 	morph_mass.py $<  $(word 2,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --fortesting 500 && \
-	plot_mass_morph_check.py ../data/templates_lj_sig_2017Aug04_A_M500.root ../data/templates_lj_sig_2017Aug04_A_mass_morph_testing.root $(limitdir)/checks && \
+	morph_widths.py ../data/templates_lj_sig_$(jobid)_A_M500.root --forchecks && \
+	plot_morph_check.py ../data/templates_lj_sig_$(jobid)_A_M500_width_morphed.root ../data/templates_lj_sig_$(jobid)_A_mass_morph_testing.root $(limitdir)/checks && \
 	morph_mass.py $(word 3,$^) $(word 4,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single 500 && \
 	morph_mass.py $(word 3,$^) $(word 4,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --fortesting 500 && \
-	plot_mass_morph_check.py ../data/templates_ll_sig_2017Aug04_A_M500.root ../data/templates_ll_sig_2017Aug04_A_mass_morph_testing.root $(limitdir)/checks --categories ll && \
+	morph_widths.py ../data/templates_ll_sig_$(jobid)_A_M500.root --forchecks && \
+	plot_morph_check.py ../data/templates_ll_sig_$(jobid)_A_M500_width_morphed.root ../data/templates_ll_sig_$(jobid)_A_mass_morph_testing.root $(limitdir)/checks --categories ll && \
 	touch $@
 
-mass_checks: $(limitdir)/.mass_morph_check
+morph_checks: $(limitdir)/.morph_checks
 
 #../scripts/morph_mass.py ../data/templates_lj_sig_2017Aug04.root ../data/templates_lj_bkg_2017Aug04.root A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single 500
 #../scripts/morph_mass.py ../data/templates_lj_sig_2017Aug04.root ../data/templates_lj_bkg_2017Aug04.root A --algo NonLinearPosFractions --input_masses 400,500,600,750 --fortesting 500

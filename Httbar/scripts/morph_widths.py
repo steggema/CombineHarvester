@@ -35,12 +35,11 @@ new_points = {
 	40. : '40pc',	
 }
 '''
-set_trace()
 new_points = dictionary = dict(zip(list(np.arange(2.5,50,0.5)),list("%s%s" % (str(x).replace('.','p').replace('p0',''),"pc") for x in np.arange(2.5,50,0.5))))
 for key in mapping.values():
  new_points.pop(key,None)
 if args.forchecks:
-	new_points.update(checks)
+	new_points = checks
 
 available = set(mapping.values())
 to_make = set(new_points.keys())
@@ -68,7 +67,7 @@ def make_name(key, width):
 	process, sigint, mass_sys = key
 	return '-'.join([process, sigint, new_points[width], mass_sys])
 
-outname = args.inputfile.replace('.root', '_morphed.root')
+outname = args.inputfile.replace('.root', '_width_morphed.root')
 shutil.copyfile(args.inputfile, outname)
 infile = ROOT.TFile(outname, 'UPDATE')
 for category in [i.GetName() for i in infile.GetListOfKeys()]:
@@ -76,7 +75,9 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	tdir = infile.Get(category)
 	tdir.cd()
 	shapes = [i.GetName() for i in tdir.GetListOfKeys()]
-	shapes = [i for i in shapes if i.startswith('ggA_') or i.startswith('ggH_')]
+	if args.forchecks:
+		shapes = [i for i in shapes if not (i.endswith('Up') or i.endswith('Down'))]
+	shapes = [i for i in shapes if (i.startswith('ggA_') or i.startswith('ggH_')) and not i.endswith('_')]
 	nMorph = len(shapes)*len(new_points)
 	counter = 0
 	shapes = { "sgn" : (i for i in shapes if '_pos-sgn' in i), "int" : (i for i in shapes if '-int-' in i)}
