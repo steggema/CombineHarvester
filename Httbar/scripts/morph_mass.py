@@ -20,7 +20,10 @@ parser.add_argument('--widths', default='2p5,5,10,25,50',
 parser.add_argument('--stepsize', default='50')
 parser.add_argument('--interpolate', default='True')
 parser.add_argument('--fortesting', type=int, default=0)
+parser.add_argument('--kfactor', type=float, default=1.)
+parser.add_argument('--nosystematics', action='store_true')
 parser.add_argument('--single', type=int, default=0)
+parser.add_argument('--out')
 
 args = parser.parse_args()
 
@@ -57,7 +60,8 @@ to_make = [min(available) + (i + 1) *
 to_make = [m for m in to_make if m not in available]
 if args.fortesting:
 	to_make = [args.fortesting]
-	available.remove(args.fortesting)
+	if args.fortesting in available:
+		available.remove(args.fortesting)
 if args.single:
 	if args.single not in available:
 		raise RuntimeError('I cannot dump a single point which is not available, maybe you meant to use --fortesting?')
@@ -72,6 +76,8 @@ if args.single:
 	outname = outname.replace('morphed_mass', 'M%d' % args.single)
 if args.fortesting:
 	outname = outname.replace('morphed_mass', 'mass_morph_testing')
+if args.out:
+	outname = args.out
 # shutil.copyfile(args.inputfile, outname)
 infile = ROOT.TFile(args.inputfile)
 ichunk = 0
@@ -127,7 +133,7 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
     tdir.cd()
     outfile.mkdir(channel)
     h_names = set([key.GetName().replace('400', '{MASS}').replace('500', '{MASS}').replace('600', '{MASS}').replace('750', '{MASS}') for key in tdir.GetListOfKeys()])		
-    if args.fortesting or args.single:
+    if args.nosystematics:
         h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
     h_names = set([i for i in h_names if not i.endswith('_') and i.startswith('gg%s' % args.parity)])
     print 'Processing', len(h_names), 'different signal templates'
@@ -310,6 +316,10 @@ for channel in [i.GetName() for i in infile.GetListOfKeys()]:
                 for i_bin in xrange(n_bins_part):
                     h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinContent(i_bin+1))
                     h_out.SetBinError(i_bin+1, 0.)
+
+            if args.kfactor != 1:
+                h_out.Scale(args.kfactor)
+
             h_out.Write()
             # print 'Writing', test_mass, h_out.Integral()
 
