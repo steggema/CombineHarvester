@@ -213,7 +213,7 @@ plot.DrawTitle(pads[0], args.title_left, 1)
 #set_trace()
 canv.cd()
 
-set_trace()
+# set_trace()
 #t = ROOT.TBox(0.16,0.12,0.185,0.81)
 #t.SetFillColorAlpha(ROOT.kRed-9,0.4)
 #t.Draw()
