@@ -1,4 +1,4 @@
-jobid=2017Sep28
+jobid=2017Aug04
 runmode=--run blind
 channel=cmb
 limitdir=/afs/cern.ch/user/s/steggema/work/stats/CMSSW_7_4_7/src/CombineHarvester/Httbar/results/combination/
@@ -85,8 +85,30 @@ $(limitdir)/.breakdownplots: $(limitdir)/.breakdown $(limitdir)/.jsons ../script
 breakdownplots: $(limitdir)/.breakdownplots
 
 $(limitdir)/.impacts: $(limitdir)/.workspace ../scripts/impacts.sh
-	cd $(limitdir) && impacts.sh ${runmode} && cd - && touch $@
+	cd .. && scram b && cd - && cd $(limitdir) && impacts.sh ${runmode} && cd - && touch $@
 
 impacts: $(limitdir)/.impacts
+
+#
+# Other random plots
+#
+
+#mass morph check
+$(limitdir)/.morph_checks:  ../data/templates_lj_sig_$(jobid).root ../data/templates_lj_bkg_$(jobid).root ../data/templates_ll_sig_$(jobid).root ../data/templates_ll_bkg_$(jobid).root ../scripts/morph_mass.py ../scripts/morph_widths.py ../scripts/plot_morph_check.py
+	cd .. && scram b && cd - && \
+	morph_mass.py $<  $(word 2,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single 500 && \
+	morph_mass.py $<  $(word 2,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --fortesting 500 && \
+	morph_widths.py ../data/templates_lj_sig_$(jobid)_A_M500.root --forchecks && \
+	plot_morph_check.py ../data/templates_lj_sig_$(jobid)_A_M500_width_morphed.root ../data/templates_lj_sig_$(jobid)_A_mass_morph_testing.root $(limitdir)/checks && \
+	morph_mass.py $(word 3,$^) $(word 4,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single 500 && \
+	morph_mass.py $(word 3,$^) $(word 4,$^) A --algo NonLinearPosFractions --input_masses 400,500,600,750 --fortesting 500 && \
+	morph_widths.py ../data/templates_ll_sig_$(jobid)_A_M500.root --forchecks && \
+	plot_morph_check.py ../data/templates_ll_sig_$(jobid)_A_M500_width_morphed.root ../data/templates_ll_sig_$(jobid)_A_mass_morph_testing.root $(limitdir)/checks --categories ll && \
+	touch $@
+
+morph_checks: $(limitdir)/.morph_checks
+
+#../scripts/morph_mass.py ../data/templates_lj_sig_2017Aug04.root ../data/templates_lj_bkg_2017Aug04.root A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single 500
+#../scripts/morph_mass.py ../data/templates_lj_sig_2017Aug04.root ../data/templates_lj_bkg_2017Aug04.root A --algo NonLinearPosFractions --input_masses 400,500,600,750 --fortesting 500
 
 all: $(limitdir)/.limitplots $(limitdir)/.breakdownplots $(limitdir)/.impacts
