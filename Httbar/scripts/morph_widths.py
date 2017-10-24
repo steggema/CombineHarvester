@@ -4,6 +4,9 @@ import numpy as np
 parser = ArgumentParser()
 parser.add_argument('inputfile')
 parser.add_argument('--forchecks', action='store_true')
+parser.add_argument('--nocopy', action='store_true', help='does not copy the file to add the points, but just create the new points')
+parser.add_argument('--out', help='forces output name')
+parser.add_argument('--single', type=float)
 #parser.add_argument('--hyperbolic', action='store_true', help='use hyperbolic interpolation')
 args = parser.parse_args()
 
@@ -35,7 +38,10 @@ new_points = {
 	40. : '40pc',	
 }
 '''
-new_points = dictionary = dict(zip(list(np.arange(2.5,50,0.5)),list("%s%s" % (str(x).replace('.','p').replace('p0',''),"pc") for x in np.arange(2.5,50,0.5))))
+widths = np.arange(2.5,50,0.5)
+if args.single:
+	widths = [args.single]
+new_points = dictionary = dict(zip(list(np.arange(2.5,50,0.5)),list("%s%s" % (str(x).replace('.','p').replace('p0',''),"pc") for x in widths)))
 for key in mapping.values():
  new_points.pop(key,None)
 if args.forchecks:
@@ -71,8 +77,14 @@ def make_name(key, width):
 	return '-'.join([process, sigint, new_points[width], mass_sys])
 
 outname = args.inputfile.replace('.root', '_width_morphed.root')
-shutil.copyfile(args.inputfile, outname)
-infile = ROOT.TFile(outname, 'UPDATE')
+if args.out:
+	outname = args.out
+if args.nocopy:
+	infile = ROOT.TFile(args.inputfile)
+	outfile = ROOT.TFile(outname, 'recreate')
+else:
+	shutil.copyfile(args.inputfile, outname)
+	infile = ROOT.TFile(outname, 'UPDATE')
 for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	counter = 0
 	tdir = infile.Get(category)
