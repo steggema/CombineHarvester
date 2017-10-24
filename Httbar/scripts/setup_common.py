@@ -125,7 +125,7 @@ def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb'):
 
 	return procs if chan == 'lj' else procs_ll
 
-def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600', '750']):
+def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600', '750'], addBBB=True):
 	print '\n\n------------   LL LIMIT SETTING   ------------'
 	cat_ids = [cat_mapping[i] for i in ['ll']]
 	cats = [(cat_mapping[i], i) for i in ['ll']]
@@ -134,15 +134,16 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 	cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], cats, True)
 
 	bbb_systematics = {}
-	tf = ROOT.TFile(in_file)
-	for category in ['ll']:
-		cat_dir = tf.Get(category)
-		histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
-		sys_name = ll_bbb_template % category
-		bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')] #strip tt_...Up
-		bbb_systematics[cat_mapping[category]] = bbbs
-		print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
-	tf.Close()
+	if addBBB:
+		tf = ROOT.TFile(in_file)
+		for category in ['ll']:
+			cat_dir = tf.Get(category)
+			histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
+			sys_name = ll_bbb_template % category
+			bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')] #strip tt_...Up
+			bbb_systematics[cat_mapping[category]] = bbbs
+			print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
+		tf.Close()
 
 	print '>> Adding systematic uncertainties...'
 
@@ -169,10 +170,11 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 			cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, 0.166667 if shape_uncertainty=='TMass' else 1.))
 
 	#BIN BY BIN
-	for category, bbbs in bbb_systematics.iteritems():
-		for bbb in bbbs:
-			cb.cp().process(['TT']).AddSyst(
-				cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
+	if addBBB:
+		for category, bbbs in bbb_systematics.iteritems():
+			for bbb in bbbs:
+				cb.cp().process(['TT']).AddSyst(
+					cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
 
 	#SIGNAL SHAPE UNCERTAINTIES
 	for unc_name in signal_shape_uncertainties:
@@ -185,20 +187,22 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 			ch.SystMap('bin_id')(cat_ids, 1.)
 			)
 
-def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses=['400', '500', '600', '750']):
+def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses=['400', '500', '600', '750'], addBBB=True):
 	print '\n\n------------   L+J LIMIT SETTING   ------------'
 	cat_ids = [cat_mapping[i] for i in ['mujets', 'ejets']]
 
 	bbb_systematics = {}
-	tf = ROOT.TFile(in_file)
-	for category in ['mujets', 'ejets']:
-		cat_dir = tf.Get(category)
-		histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
-		sys_name = lj_bbb_template % category
-		bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')]
-		bbb_systematics[cat_mapping[category]] = bbbs
-		print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
-	tf.Close()
+
+	if addBBB:
+		tf = ROOT.TFile(in_file)
+		for category in ['mujets', 'ejets']:
+			cat_dir = tf.Get(category)
+			histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
+			sys_name = lj_bbb_template % category
+			bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')]
+			bbb_systematics[cat_mapping[category]] = bbbs
+			print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
+		tf.Close()
 
 	if channel in ['cmb', 'ej', 'lj']:
 		ecat = [(cat_mapping['ejets'], 'ejets')]
@@ -242,10 +246,11 @@ def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses
 			cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, 0.166667 if shape_uncertainty=='TMass' else 1.))
 
 	#BIN BY BIN
-	for category, bbbs in bbb_systematics.iteritems():
-		for bbb in bbbs:
-			cb.cp().process(['TT']).AddSyst(
-				cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
+	if addBBB:
+		for category, bbbs in bbb_systematics.iteritems():
+			for bbb in bbbs:
+				cb.cp().process(['TT']).AddSyst(
+					cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
 
 	#SIGNAL SHAPE UNCERTAINTIES
 	for unc_name in signal_shape_uncertainties:
@@ -363,11 +368,11 @@ if __name__ == '__main__':
 
 			if args.channels != 'll':
 				procs = createProcessNames([width], [mode], 'lj')
-				prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj, args.channels, masses)
+				prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj, args.channels, masses, addBBB=addBBB)
 
 			if args.channels in ['ll', 'cmb']:
 				procs = createProcessNames([width], [mode], 'll')
-				prepareDiLepton(cb, category_to_id, procs, in_file_ll, masses)
+				prepareDiLepton(cb, category_to_id, procs, in_file_ll, masses, addBBB=addBBB)
 
 			print '>> Extracting histograms from input root files...'
 			cb.cp().backgrounds().ExtractShapes(

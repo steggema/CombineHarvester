@@ -1,10 +1,9 @@
 #!/bin/bash
 script="$CMSSW_BASE/src/CombineHarvester/Httbar/myscripts/Httbar_clcheng/SusHi/scripts/Map_2HDMC_in.py"
-dir2HDMC="/afs/cern.ch/user/c/clcheng/local/2HDMC-1.7.0/"
-dirSusHi="/afs/cern.ch/user/c/clcheng/local/SusHi-1.6.1/bin"
-dirSusHiCard='/afs/cern.ch/user/c/clcheng/local/SusHi-1.6.1/example'
+dir2HDMC="/afs/cern.ch/user/s/steggema/Software/2HDMC-1.7.0"
+dirSusHi="/afs/cern.ch/user/s/steggema/Software/SusHi-1.6.1/bin"
+dirSusHiCard='/afs/cern.ch/user/s/steggema/Software/SusHi-1.6.1/example'
 SusHiCard="2HDMC_physicalbasis.in"
-dirout="/afs/cern.ch/user/c/clcheng/local/SusHi-1.6.1/bin/"
 
 lo="2" # order ggh, bbh: -1 = off, 0 = LO, 1 = NLO, 2 = NNLO, 3 = N3LO
 model="2" # model: 0 = SM, 1 = MSSM, 2 = 2HDM, 3 = NMSSM

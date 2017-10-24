@@ -1,9 +1,9 @@
 Block SUSHI
-  1   2		# model: 0 = SM, 1 = MSSM, 2 = 2HDM, 3 = NMSSM
-  2   12        # 11 = h, 12 = H, 12 = A
+  1   {model}		# model: 0 = SM, 1 = MSSM, 2 = 2HDM, 3 = NMSSM
+  2   {higgs}        # 11 = h, 12 = H, 21 = A
   3   0		# collider: 0 = p-p, 1 = p-pbar
   4   13000.d0	# center-of-mass energy in GeV
-  5   2		# order ggh: -2 = off, 2 = LO, 2 = NLO, 2 = NNLO, 3 = N3LO
+  5   {gghlo}		# order ggh: -2 = off, 2 = LO, 2 = NLO, 2 = NNLO, 3 = N3LO
   6   2 	# order bbh: 2 = off, 2 = LO, 1 = NLO, 2 = NNLO
   7   1 	# electroweak cont. for ggh:
                 # 0 = no, 1 = light quarks at NLO, 2 = SM EW factor
@@ -12,15 +12,15 @@ Block SUSHI
 Block 2HDMC 	# 2HDMC arXiv:0902.0851
   1   2 	# 2HDMC key, 1=lambda basis, 2=physical basis, 3=H2 basis
   2   2 	# 2HDM version type: (1=Type I,2=Type II,3=Flipped,4=Lepton Specific) 
-  3   1.00000 		# tan(beta)
-  4   256.464314964 		# m12
-  21  125.09000 	# mh
-  22  400.01881 	# mH
-  23  362.69531 	# mA
-  24  371.49313 	# mC
-  25  -0.99216	# sin(beta-alpha)
-  26  0.00000 		# lambda6
-  27  0.00000 		# lambda7
+  3   {tanb} 		# tan(beta)
+  4   {m12} 		# m12
+  21  {mh} 	# mh
+  22  {mH} 	# mH
+  23  {mA} 	# mA
+  24  {mC} 	# mC
+  25  {sinba}	# sin(beta-alpha)
+  26  {lambda6} 		# lambda6
+  27  {lambda7} 		# lambda7
 Block SMINPUTS		# Standard Model inputs
   1   1.27934000e+02	# alpha_em^(-1)(MZ) SM MSbar
   2   1.16637000e-05	# G_Fermi

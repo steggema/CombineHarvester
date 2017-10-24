@@ -1,4 +1,4 @@
-jobid=2017Aug04
+jobid=2017Sep28
 runmode=--run blind
 channel=cmb
 limitdir=/afs/cern.ch/user/s/steggema/work/stats/CMSSW_7_4_7/src/CombineHarvester/Httbar/results/combination/
@@ -50,13 +50,13 @@ $(limitdir)/.workspace: $(limitdir)/.cards ../scripts/Httbar_workspace.sh
 workspace: $(limitdir)/.workspace
 
 $(limitdir)/.limit:  $(limitdir)/.workspace  ../scripts/Httbar_limits.sh
-	cd $(limitdir) && Httbar_limits.sh ${runmode} && cd - && touch $@
+	cd .. && scram b && cd - && cd $(limitdir) && Httbar_limits.sh ${runmode} && cd - && touch $@
 
 limits: $(limitdir)/.limit
 
 $(limitdir)/.jsons:  $(limitdir)/.workspace ../scripts/transpose_jsons.py
 	cd .. && scram b && cd - && cd $(limitdir) && \
-	combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic.mH[0-9][0-9][0-9].root --use-dirs && \
+	combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits.mH[0-9][0-9][0-9].root --use-dirs && \
 	transpose_jsons.py limits_A_[0-9]*.json && cd -&& touch $@
 
 jsons: $(limitdir)/.jsons
