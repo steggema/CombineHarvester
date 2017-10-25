@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from timeit import default_timer as timer
 
-from os import path
+
+from os import path, remove
 from argparse import ArgumentParser
 from numpy import array
 import gc
@@ -20,6 +21,8 @@ parser.add_argument('--widths', default='2p5,5,10,25,50',
 parser.add_argument('--stepsize', default='50')
 parser.add_argument('--interpolate', default='True')
 parser.add_argument('--fortesting', type=int, default=0)
+parser.add_argument('--single_mass', type=int, default=0, 
+                    help='morph single mass, or none in case in list of available')
 parser.add_argument('--kfactor', type=float, default=1.)
 parser.add_argument('--nosystematics', action='store_true')
 parser.add_argument('--single', type=int, default=0)
@@ -30,7 +33,6 @@ args = parser.parse_args()
 import ROOT
 from ROOT import TVectorD
 from ROOT import RooDataHist, RooArgSet, RooArgList, RooMomentMorph, RooHistPdf
-from pdb import set_trace
 
 ROOT.TH1.AddDirectory(False)
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
@@ -45,6 +47,8 @@ print 'Using mass binning: ', OUTPUT_BINNING
 N_REGIONS = 5
 MIN_MASS = 250.0 if isLJ else 325.0
 MAX_MASS = 1200.0 if isLJ else 1400.0
+
+CHECK_BINNING = False
 
 bkgfile = ROOT.TFile(args.bkgfile)
 
@@ -66,6 +70,11 @@ if args.single:
 	if args.single not in available:
 		raise RuntimeError('I cannot dump a single point which is not available, maybe you meant to use --fortesting?')
 
+if args.single_mass:
+    to_make = [args.single_mass]
+    if args.single_mass in available:
+        available = [args.single_mass]
+
 print 'Output masses:', to_make
 
 widths = args.widths.split(',')
@@ -76,16 +85,14 @@ if args.single:
 	outname = outname.replace('morphed_mass', 'M%d' % args.single)
 if args.fortesting:
 	outname = outname.replace('morphed_mass', 'mass_morph_testing')
+if args.single_mass:
+    outname = outname.replace('morphed_mass', 'M{}{}'.format(args.parity, args.single_mass))
 if args.out:
 	outname = args.out
 # shutil.copyfile(args.inputfile, outname)
 infile = ROOT.TFile(args.inputfile)
 ichunk = 0
 outfile = ROOT.TFile(outname, 'RECREATE')
-
-m_ttbar = ROOT.RooRealVar('mass', 'mass', MIN_MASS, MAX_MASS)
-m_A = ROOT.RooRealVar('m_A', 'm_A', float(
-    min(available)), float(max(available)))
 
 # Get mass interpolation from Viola's file
 file_int = ROOT.TFile(path.expandvars(
@@ -94,6 +101,9 @@ file_int_int = ROOT.TFile(path.expandvars(
     '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_SEweight_and_NegEvtsFrac_vs_mass.root'))
 # pattern_translator = {'pos-sgn':'res', 'pos-int':'int'}
 
+def createMomentMorph(name, m_A, m_ttbar, pdfs, vd, setting):
+    return RooMomentMorph(
+                name, '', m_A, RooArgList(m_ttbar), pdfs, vd, setting)
 
 def interpolate(masses, yields, test_mass, linear=True):
     if not linear:
@@ -103,6 +113,12 @@ def interpolate(masses, yields, test_mass, linear=True):
         return g.Eval(float(test_mass), 0)
 
     from bisect import bisect_left, bisect_right
+
+    if len(masses) == 1:
+        if test_mass == masses[0]:
+            return yields[0]
+        else:
+            raise RuntimeError('Test mass not equal single provided mass')
 
     i_low = bisect_left(masses, test_mass) - 1
     i_high = bisect_right(masses, test_mass)
@@ -119,214 +135,250 @@ def interpolate(masses, yields, test_mass, linear=True):
     f_high = (m_above - test_mass) / delta_m
     return f_low * y_below + f_high * y_above
 
-for channel in [i.GetName() for i in infile.GetListOfKeys()]:
-    #check for binning consistency
-    ttshape = bkgfile.Get('%s/TT' % channel) 
-    if not ttshape:
-        raise RuntimeError('The provided background file does not include the TT shape for the channel %s' % channel)
-    shape_bins = ttshape.GetNbinsX()
-    n_bins = (len(OUTPUT_BINNING)-1)*N_REGIONS
-    if shape_bins != n_bins:
-        raise RuntimeError('The output binning for the signal (%d bins) does not match the one of the background shapes (%d bins)' % (n_bins, shape_bins))
-    
-    tdir = infile.Get(channel)
-    tdir.cd()
-    outfile.mkdir(channel)
-    h_names = set([key.GetName().replace('400', '{MASS}').replace('500', '{MASS}').replace('600', '{MASS}').replace('750', '{MASS}') for key in tdir.GetListOfKeys()])		
-    if args.nosystematics:
-        h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
-    h_names = set([i for i in h_names if not i.endswith('_') and i.startswith('gg%s' % args.parity)])
-    print 'Processing', len(h_names), 'different signal templates'
-    for h_name in h_names: # it's not very nice - somehow need to make sure we extract all the histogram name but the mass
-        start = timer()
-        pattern = h_name[4:11]
-        width = [w for w in widths if w+'pc' in h_name]
-        width = max(width, key=len) # e.g. for '2p5pc' and '5pc'
-        if not width:
-            print 'Did not find width in histogram name', h_name
-            import pdb; pdb.set_trace()
-            continue
+def get_int_graphs(args, width, pattern):
+    g_int = None
+    g_int_neg_frac = None
+    if pattern == 'pos-sgn':
+        g_int = file_int.Get('{}_res_semilep_w{}_toterr'.format(args.parity, width))
 
-        g_int = None
-        g_int_neg_frac = None
-        if pattern == 'pos-sgn':
-            g_int = file_int.Get('{}_res_semilep_w{}_toterr'.format(args.parity, width))
+    if pattern in ['pos-int', 'neg-int']:
+        g_int = file_int_int.Get('{}_int_semilep_w{}_SEweight'.format(args.parity, width))
+        g_int_neg_frac = file_int_int.Get('{}_int_semilep_w{}_NegEvts_Frac'.format(args.parity, width))
+        # print pattern
+        # for m in [400., 450., 500., 600., 700.]:
+        #     print m, g_int.Eval(m) * g_int_neg_frac.Eval(m)
+        #     print m, g_int.Eval(m) * (1. - g_int_neg_frac.Eval(m))
 
-        if pattern in ['pos-int', 'neg-int']:
-            g_int = file_int_int.Get('{}_int_semilep_w{}_SEweight'.format(args.parity, width))
-            g_int_neg_frac = file_int_int.Get('{}_int_semilep_w{}_NegEvts_Frac'.format(args.parity, width))
-            # print pattern
-            # for m in [400., 450., 500., 600., 700.]:
-            #     print m, g_int.Eval(m) * g_int_neg_frac.Eval(m)
-            #     print m, g_int.Eval(m) * (1. - g_int_neg_frac.Eval(m))
+    if not g_int:
+        import pdb; pdb.set_trace()
 
-        if not g_int:
-            import pdb; pdb.set_trace()
+    return g_int, g_int_neg_frac
 
-        mass_hists = {}
-        mass_scales = {}
-        # First get the histograms for all masses
-
-        print '\n Processing:', h_name
-
-        tmp_file = ROOT.TFile('_tmp.root', 'RECREATE')
-
-        for mass in available:
-            # print 'MASS', mass
-            #print '{channel}/{h_name}'.format(
-            #    channel=channel, h_name=h_name).format(MASS=mass)
-            h_ori = infile.Get('{channel}/{h_name}'.format(
-                channel=channel, h_name=h_name).format(MASS=mass)).Clone(
-							h_name.format(MASS=mass)
-							)
-            #print 'MASS', mass, h_ori.GetName()
-
-            scale = 1. / g_int.Eval(mass)
-            h_ori.Scale(1. / g_int.Eval(mass))
-
-            if pattern == 'pos-int':
-                scale *= 1. / (1. - g_int_neg_frac.Eval(mass))
-                h_ori.Scale(1. / (1. - g_int_neg_frac.Eval(mass)))
-
-            if pattern == 'neg-int':
-                scale *= 1. / g_int_neg_frac.Eval(mass)
-                h_ori.Scale(1. / g_int_neg_frac.Eval(mass))
-            # yields.append(h_ori.Integral())
-
-            mass_scales[mass] = scale
-            mass_hists[mass] = h_ori
-
-        d_hists_region = {}
-
-        eval_time = 0.
-        create_time = 0.
-
-        # Split input histogram
-        if mass_hists[available[0]].GetNbinsY() != N_REGIONS:
-            raise RuntimeError(
-							'the histogram %s has only %d y bins instead of %d expected' % \
-								(h_ori.GetName(), h_ori.GetNbinsY(), N_REGIONS)
-							)
-        for i_costheta in xrange(N_REGIONS):
-            d_hists_region[i_costheta] = {}
-            pdfs = RooArgList()
-            keeper = []
-            vd = TVectorD(len(available))
-            yields = []
-            for i_m, mass in enumerate(available):
-                h_all = mass_hists[mass]
-                tmp_file.cd()
-                h_region = h_all.ProjectionX(
-									channel+h_all.GetName()+str(i_costheta)+"_finebinning",
-									i_costheta+1, i_costheta+1
-									)
-                in_binning = set([h_region.GetBinLowEdge(i) for i in range(1, h_region.GetNbinsX()+2)])
-                for i in OUTPUT_BINNING:
-                    if i not in in_binning:
-                        raise ValueError('Output bin edge %.2f is not included in the input bin edges' % i)
-                d_hists_region[i_costheta][mass] = h_region.Rebin(
-									len(OUTPUT_BINNING) - 1, 
-									h_region.GetName().replace('_finebinning', ''), 
-									array(OUTPUT_BINNING)
-									)
-                d_hists_region[i_costheta][mass].Scale(1./mass_scales[mass])
-                yields.append(h_region.Integral())
-
-                # if pattern == 'neg-int':
-                # 	h_ori.Scale(-1.)
-                #set_trace()
-                data_hist = RooDataHist(
-                    'm' + h_region.GetName().replace('_finebinning', ''), 
-										'', RooArgList(m_ttbar), h_region, 1.
-										)
-                pdf = RooHistPdf(
-									'pdf_m' + h_region.GetName().replace('_finebinning', ''),
-									'', RooArgSet(m_ttbar), data_hist
-									)
-                pdfs.add(pdf)
-                vd[i_m] = float(mass)
-                keeper.append(pdf)
-                keeper.append(data_hist)
-                keeper.append(h_region)
-
-            setting = getattr(ROOT.RooMomentMorph, args.algo)
-            morph = RooMomentMorph(
-                'morph' + channel + h_name.format(MASS='000'), '', m_A, RooArgList(m_ttbar), pdfs, vd, setting)
-            # morph.Print('v')
-
-            # print 'Yields', i_costheta, pattern, yields
-            for test_mass in to_make:
-                m_A.setVal(float(test_mass))
-                tmp_file.cd()
-                h_morph_region = h_region.Clone(
-                    'MORPH' + h_region.GetName().replace('_finebinning', '').replace(str(available[-1]), str(test_mass)))
-
-                for i_bin in xrange(h_morph_region.GetNbinsX()):
-
-                    x = h_morph_region.GetBinCenter(i_bin + 1)
-                    # print 'mttbar = ', x
-                    m_ttbar.setVal(x)
-
-                    # for i_pdf in xrange(len(pdfs)):
-                    # 	print pdfs[i_pdf].getVal()
-                    # print 'Morphed val:', morph.getVal()
-
-                    h_morph_region.SetBinContent(
-                        i_bin + 1, morph.getVal() * h_morph_region.GetBinWidth(i_bin + 1))
-                
-                h_morph_region_rebin = h_morph_region.Rebin(
-									len(OUTPUT_BINNING) - 1, 
-									h_morph_region.GetName().replace('MORPH', ''), 
-									array(OUTPUT_BINNING)
-									)
-
-                if do_interpolate:
-                    scale = interpolate(available, yields, test_mass)
-                    if scale == 0.:
-                        import pdb; pdb.set_trace()
-
-                    h_morph_region_rebin.Scale(
-                        scale / h_morph_region_rebin.Integral())
-                
-                h_morph_region_rebin.Scale(g_int.Eval(test_mass))
-                if pattern == 'pos-int':
-                    h_morph_region_rebin.Scale(1. - g_int_neg_frac.Eval(test_mass))
-                if pattern == 'neg-int':
-                    h_morph_region_rebin.Scale(g_int_neg_frac.Eval(test_mass))
-
-                d_hists_region[i_costheta][test_mass] = h_morph_region_rebin
-                del h_morph_region # Save execution time (->ROOT)
-            # Delete items as execution time grows extremely otherwise
-            for item in keeper:
-                del item
+def interpolate_per_region(d_hists_region, mass_hists, mass_scales, channel, i_costheta, h_name, g_int, g_int_neg_frac, pattern):
+    d_hists_region[i_costheta] = {}
+    pdfs = RooArgList()
+    keeper = []
+    vd = TVectorD(len(available))
+    yields = []
+    m_ttbar = ROOT.RooRealVar('mass', 'mass', MIN_MASS, MAX_MASS)
+    m_A = ROOT.RooRealVar('m_A', 'm_A', float(
+                          min(available)), float(max(available)))
+    for i_m, mass in enumerate(available):
+        h_all = mass_hists[mass]
+        # tmp_file.cd()
+        h_region = h_all.ProjectionX(
+                            channel+h_all.GetName()+str(i_costheta)+"_finebinning",
+                            i_costheta+1, i_costheta+1
+                            )
         
-        # Now collate the hists from the different regions for all masses, including the available
-        for test_mass in to_make+available:
-            if args.fortesting and test_mass != args.fortesting: continue
-            n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
-            #set_trace()
-            outfile.cd()
-            outdir = outfile.Get(channel)
-            outdir.cd()
-            h_out = ROOT.TH1D(d_hists_region[0][test_mass].GetName()[:-1].replace(channel, ''), '', n_bins_out, 0., float(n_bins_out))
+        if CHECK_BINNING:
+            h_reg_nbins = h_region.GetNbinsX()+2
+            in_binning = set([h_region.GetBinLowEdge(i) for i in range(1, h_reg_nbins)])
+            for i in OUTPUT_BINNING:
+                if i not in in_binning:
+                    raise ValueError('Output bin edge %.2f is not included in the input bin edges' % i)
 
-            for i_costheta in xrange(N_REGIONS):
-                h_part = d_hists_region[i_costheta][test_mass]
-                n_bins_part = h_part.GetNbinsX()
-                for i_bin in xrange(n_bins_part):
-                    h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinContent(i_bin+1))
-                    h_out.SetBinError(i_bin+1, 0.)
+        d_hists_region[i_costheta][mass] = h_region.Rebin(
+                            len(OUTPUT_BINNING) - 1, 
+                            h_region.GetName().replace('_finebinning', ''), 
+                            array(OUTPUT_BINNING)
+                            )
+        d_hists_region[i_costheta][mass].Scale(1./mass_scales[mass])
+        yields.append(h_region.Integral())
 
-            if args.kfactor != 1:
-                h_out.Scale(args.kfactor)
-
-            h_out.Write()
-            # print 'Writing', test_mass, h_out.Integral()
-
-        tmp_file.Close()
-        gc.collect()
-        for obj in ROOT.gROOT.GetList(): #kill it, with FIRE!
-            obj.Delete()
+        # if pattern == 'neg-int':
+        #   h_ori.Scale(-1.)
         #set_trace()
-        print 'Time elapsed:', timer() - start
-    outfile.Write()
+        
+
+        data_hist = RooDataHist(
+            'm' + h_region.GetName().replace('_finebinning', ''), 
+                                '', RooArgList(m_ttbar), h_region, 1.
+                                )
+        pdf = RooHistPdf(
+                            'pdf_m' + h_region.GetName().replace('_finebinning', ''),
+                            '', RooArgSet(m_ttbar), data_hist
+                            )
+        pdfs.add(pdf)
+        vd[i_m] = float(mass)
+        keeper.append(pdf)
+        keeper.append(data_hist)
+        keeper.append(h_region)
+
+    setting = getattr(ROOT.RooMomentMorph, args.algo)
+    morph = createMomentMorph(
+        'morph' + channel + h_name.format(MASS='000'), m_A, m_ttbar, pdfs, vd, setting)
+    # morph.Print('v')
+
+    n_bins_x = h_region.GetNbinsX()
+
+    
+
+    bin_centers = []
+    bin_widths = []
+
+    for i_bin in xrange(n_bins_x):
+        bin_centers.append(h_region.GetBinCenter(i_bin + 1))
+        bin_widths.append(h_region.GetBinWidth(i_bin + 1))
+
+    # print 'Yields', i_costheta, pattern, yields
+    for test_mass in to_make:
+        m_A.setVal(float(test_mass))
+        # tmp_file.cd()
+        h_morph_region = h_region.Clone(
+            'MORPH' + h_region.GetName().replace('_finebinning', '').replace(str(available[-1]), str(test_mass)))
+
+        for i_bin in xrange(n_bins_x):
+
+            x = bin_centers[i_bin]
+            # print 'mttbar = ', x
+            m_ttbar.setVal(x)
+
+            # for i_pdf in xrange(len(pdfs)):
+            #   print pdfs[i_pdf].getVal()
+            # print 'Morphed val:', morph.getVal()
+            val = morph.getVal()
+            h_morph_region.SetBinContent(
+                i_bin + 1, val * bin_widths[i_bin])
+        
+        h_morph_region_rebin = h_morph_region.Rebin(
+                            len(OUTPUT_BINNING) - 1, 
+                            h_morph_region.GetName().replace('MORPH', ''), 
+                            array(OUTPUT_BINNING)
+                            )
+
+        if do_interpolate:
+            scale = interpolate(available, yields, test_mass)
+            if scale == 0.:
+                import pdb; pdb.set_trace()
+
+            h_morph_region_rebin.Scale(
+                scale / h_morph_region_rebin.Integral())
+        
+        h_morph_region_rebin.Scale(g_int.Eval(test_mass))
+        if pattern == 'pos-int':
+            h_morph_region_rebin.Scale(1. - g_int_neg_frac.Eval(test_mass))
+        if pattern == 'neg-int':
+            h_morph_region_rebin.Scale(g_int_neg_frac.Eval(test_mass))
+
+        d_hists_region[i_costheta][test_mass] = h_morph_region_rebin
+        del h_morph_region # Save execution time (->ROOT)
+
+    del morph
+    # Delete items as execution time grows extremely otherwise
+    for item in keeper:
+        del item
+
+
+def main():
+    for channel in [i.GetName() for i in infile.GetListOfKeys()]:
+        #check for binning consistency
+        ttshape = bkgfile.Get('%s/TT' % channel) 
+        if not ttshape:
+            raise RuntimeError('The provided background file does not include the TT shape for the channel %s' % channel)
+        shape_bins = ttshape.GetNbinsX()
+        n_bins = (len(OUTPUT_BINNING)-1)*N_REGIONS
+        if shape_bins != n_bins:
+            raise RuntimeError('The output binning for the signal (%d bins) does not match the one of the background shapes (%d bins)' % (n_bins, shape_bins))
+        
+        tdir = infile.Get(channel)
+        tdir.cd()
+        outfile.mkdir(channel)
+        h_names = set([key.GetName().replace('400', '{MASS}').replace('500', '{MASS}').replace('600', '{MASS}').replace('750', '{MASS}') for key in tdir.GetListOfKeys()])		
+        if args.nosystematics:
+            h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
+        h_names = set([i for i in h_names if not i.endswith('_') and i.startswith('gg%s' % args.parity)])
+        print 'Processing', len(h_names), 'different signal templates'
+        n_max = 100000
+        for h_name in h_names: # it's not very nice - somehow need to make sure we extract all the histogram name but the mass
+            start = timer()
+            n_max -= 1
+            if n_max == 0: break
+            pattern = h_name[4:11]
+            width = [w for w in widths if w+'pc' in h_name]
+            width = max(width, key=len) # e.g. for '2p5pc' and '5pc'
+            if not width:
+                print 'Did not find width in histogram name', h_name
+                import pdb; pdb.set_trace()
+                continue
+            
+            g_int, g_int_neg_frac = get_int_graphs(args, width, pattern)
+
+            mass_hists = {}
+            mass_scales = {}
+            # First get the histograms for all masses
+
+            print '\n Processing:', h_name
+
+            # tmp_file = ROOT.TFile('/tmp/steggema/_tmp.root', 'RECREATE')
+
+            for mass in available:
+                # print 'MASS', mass
+                #print '{channel}/{h_name}'.format(
+                #    channel=channel, h_name=h_name).format(MASS=mass)
+                h_ori = infile.Get('{channel}/{h_name}'.format(
+                    channel=channel, h_name=h_name).format(MASS=mass)).Clone(
+    							h_name.format(MASS=mass)
+    							)
+                #print 'MASS', mass, h_ori.GetName()
+
+                scale = 1. / g_int.Eval(mass)
+                h_ori.Scale(1. / g_int.Eval(mass))
+
+                if pattern == 'pos-int':
+                    scale *= 1. / (1. - g_int_neg_frac.Eval(mass))
+                    h_ori.Scale(1. / (1. - g_int_neg_frac.Eval(mass)))
+
+                if pattern == 'neg-int':
+                    scale *= 1. / g_int_neg_frac.Eval(mass)
+                    h_ori.Scale(1. / g_int_neg_frac.Eval(mass))
+                # yields.append(h_ori.Integral())
+
+                mass_scales[mass] = scale
+                mass_hists[mass] = h_ori
+
+            d_hists_region = {}
+
+            # Split input histogram
+            if mass_hists[available[0]].GetNbinsY() != N_REGIONS:
+                raise RuntimeError(
+    							'the histogram %s has only %d y bins instead of %d expected' % \
+    								(h_ori.GetName(), h_ori.GetNbinsY(), N_REGIONS)
+    							)
+            for i_costheta in xrange(N_REGIONS):
+                interpolate_per_region(d_hists_region, mass_hists, mass_scales, channel, i_costheta, h_name, g_int, g_int_neg_frac, pattern)
+            
+            # Now collate the hists from the different regions for all masses, including the available
+            for test_mass in to_make+available:
+                if args.fortesting and test_mass != args.fortesting: continue
+                n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
+                #set_trace()
+                outfile.cd()
+                outdir = outfile.Get(channel)
+                outdir.cd()
+                h_out = ROOT.TH1D(d_hists_region[0][test_mass].GetName()[:-1].replace(channel, ''), '', n_bins_out, 0., float(n_bins_out))
+
+                for i_costheta in xrange(N_REGIONS):
+                    h_part = d_hists_region[i_costheta][test_mass]
+                    n_bins_part = h_part.GetNbinsX()
+                    for i_bin in xrange(n_bins_part):
+                        h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinContent(i_bin+1))
+                        h_out.SetBinError(i_bin+1, 0.)
+
+                if args.kfactor != 1:
+                    h_out.Scale(args.kfactor)
+
+                h_out.Write()
+                # print 'Writing', test_mass, h_out.Integral()
+
+            # tmp_file.Close()
+            # remove('/tmp/steggema/_tmp.root')
+            gc.collect()
+            for obj in ROOT.gROOT.GetList(): #kill it, with FIRE!
+                obj.Delete()
+            #set_trace()
+            print 'Time elapsed:', timer() - start
+        outfile.Write()
+
+if __name__ == '__main__':
+    main()
