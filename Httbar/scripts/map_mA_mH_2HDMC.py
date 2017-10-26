@@ -73,7 +73,7 @@ for mA in masses:
     for tanb in tanbs:
         d_mtb = pars[(mA, tanb)] = {}
         print "Calculating hMSSM parameters for mA = {0}, tanb = {1}".format(mA, tanb)
-        proc = subprocess.Popen([thdmc_command, mh, str(mA), str(tanb), "test"], stdout=subprocess.PIPE)
+        proc = subprocess.Popen([thdmc_command, mh, str(mA), str(tanb), "full2hdmc.out"], stdout=subprocess.PIPE)
         l = proc.stdout.readlines()
         try:
             mH = getValFrom2HDMC(l, 'm_H')
@@ -84,6 +84,13 @@ for mA in masses:
         
         for par in thdmc_to_sushi:
             d_mtb[par] = getValFrom2HDMC(l, par)
+
+        with open('full2hdmc.out') as full_out:
+            for line in full_out:
+                if line.startswith('DECAY  35'):
+                    d_mtb['H_width'] = line.split()[2]
+                if line.startswith('DECAY  36'):
+                    d_mtb['A_width'] = line.split()[2]
 
         # SusHi wants m12, not m12**2
         d_mtb['m12^2'] = math.sqrt(d_mtb['m12^2'])
@@ -119,6 +126,13 @@ for mA in masses:
                 d_mtb[higgs+'_nnlo_unc_down'] = getValFromSusHi(output, ' muR unc.', pos=3)
                 d_mtb[higgs+'_nnlo_unc_up'] = getValFromSusHi(output, ' muR unc.', pos=5)
                 
+                with open('card_tmp.out') as full_out:
+                    for line in full_out:
+                        if 'H width in GeV' in line:
+                            d_mtb['H_width_SusHi'] = line.split()[1]
+                        if 'A width in GeV' in line:
+                            d_mtb['A_width_SusHi'] = line.split()[1]
+
         for i, j in d_mtb.items(): print i, j
 
 with open('sushi_out.pkl', 'wb') as sushi_out:
