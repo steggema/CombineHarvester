@@ -37,6 +37,7 @@ from ROOT import RooDataHist, RooArgSet, RooArgList, RooMomentMorph, RooHistPdf
 ROOT.TH1.AddDirectory(False)
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
+
 # ALL THE DANGEROUS CONSTANTS IN ONE PLACE
 isLJ = ('templates_lj_' in args.inputfile)
 OUTPUT_BINNING_LJ = [300.0, 340.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0, 520.0, 540.0, 560.0, 580.0, 600.0, 625.0, 650.0, 675.0, 700.0, 730.0, 760.0, 800.0, 850.0, 900.0, 1000.0, 1200.0]
@@ -348,6 +349,8 @@ def main():
             for i_costheta in xrange(N_REGIONS):
                 interpolate_per_region(d_hists_region, mass_hists, mass_scales, channel, i_costheta, h_name, g_int, g_int_neg_frac, pattern)
             
+            # import pdb; pdb.set_trace()
+
             # Now collate the hists from the different regions for all masses, including the available
             for test_mass in to_make+available:
                 if args.fortesting and test_mass != args.fortesting: continue
@@ -374,6 +377,7 @@ def main():
             # tmp_file.Close()
             # remove('/tmp/steggema/_tmp.root')
             gc.collect()
+            ROOT.RooExpensiveObjectCache.instance().clearAll()
             for obj in ROOT.gROOT.GetList(): #kill it, with FIRE!
                 obj.Delete()
             #set_trace()
