@@ -361,35 +361,35 @@ if __name__ == '__main__':
 
 	print masses, widths, modes
 
-	for mode in modes:
-		for width in widths:
-			cb = ch.CombineHarvester()
-			cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
+	# for mode in modes:
+	for width in widths:
+		cb = ch.CombineHarvester()
+		cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
 
-			if args.channels != 'll':
-				procs = createProcessNames([width], [mode], 'lj')
-				prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj, args.channels, masses, addBBB=addBBB)
+		if args.channels != 'll':
+			procs = createProcessNames([width], modes, 'lj')
+			prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj, args.channels, masses, addBBB=addBBB)
 
-			if args.channels in ['ll', 'cmb']:
-				procs = createProcessNames([width], [mode], 'll')
-				prepareDiLepton(cb, category_to_id, procs, in_file_ll, masses, addBBB=addBBB)
+		if args.channels in ['ll', 'cmb']:
+			procs = createProcessNames([width], modes, 'll')
+			prepareDiLepton(cb, category_to_id, procs, in_file_ll, masses, addBBB=addBBB)
 
-			print '>> Extracting histograms from input root files...'
-			cb.cp().backgrounds().ExtractShapes(
-				in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC'
-				)
-			cb.cp().signals().ExtractShapes(
-				in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC'
-				)
+		print '>> Extracting histograms from input root files...'
+		cb.cp().backgrounds().ExtractShapes(
+			in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC'
+			)
+		cb.cp().signals().ExtractShapes(
+			in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC'
+			)
 
-			## if addBBB:
-			## 	addBinByBin(cb)
-			
-			if doMorph:
-				f_masses = [float(m) for m in masses]
-				performMorphing(cb, procs, min(f_masses), max(f_masses))
-
-			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode, width, doMorph, verbose=not args.silent,limitdir = args.limitdir)
+		## if addBBB:
+		## 	addBinByBin(cb)
+		
+		if doMorph:
+			f_masses = [float(m) for m in masses]
+			performMorphing(cb, procs, min(f_masses), max(f_masses))
+		mode_name = '_'.join(modes)
+		writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width, doMorph, verbose=not args.silent,limitdir = args.limitdir)
 
 	print '>> Done!'
 

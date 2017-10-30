@@ -354,6 +354,7 @@ def main():
             # Now collate the hists from the different regions for all masses, including the available
             for test_mass in to_make+available:
                 if args.fortesting and test_mass != args.fortesting: continue
+                if args.single_mass and test_mass != args.single_mass: continue
                 n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
                 #set_trace()
                 outfile.cd()

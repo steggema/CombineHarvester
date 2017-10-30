@@ -36,7 +36,7 @@ def interp(src):
     if ":" in src:
         temp = [s.split("-") for s in src.split(":")]
         low, high, step = eval(temp[0][0]), eval(temp[0][1]), eval(temp[1][0])
-        result = np.linspace(low, high, int(math.ceil((high-low)/step)))
+        result = np.linspace(low, high, int(math.ceil((high-low)/step))+1)
     else:
         result = [eval(s) for s in src.split(",")]
     return result
