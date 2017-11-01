@@ -9,7 +9,7 @@ import pickle
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
-parser.add_argument('mA')
+parser.add_argument('mA', type=int)
 parser.add_argument('tanb')
 parser.add_argument('input_sushi')
 parser.add_argument('inputs_sig', help='comma separated list of signal input files')
@@ -28,7 +28,7 @@ widthA = 0.
 
 with open(args.input_sushi) as sushi_pkl:
     mapping = pickle.load(sushi_pkl)
-    values = [d for d in mapping.values() if d['m_A'] == eval(mA) and d['tan(beta)'] == eval(tanb)]
+    values = [d for d in mapping.values() if d['m_A'] == mA and d['tan(beta)'] == eval(tanb)]
 
     if len(values) == 0:
     	raise RuntimeError('No entry found for mA and tan(beta)', mA, tanb)
@@ -36,17 +36,49 @@ with open(args.input_sushi) as sushi_pkl:
     	print 'Multiple entries found for mA and tan(beta)', mA, tanb, 'picking first'
 
     values = values[0]
-    widthA = round(float(values['A_width']), 2)
-    widthH = round(float(values['H_width']), 2)
     mH = int(round(float(values['m_H'])))
+    # Widths are relative
+    widthA = round(float(values['A_width'])/mA, 3)
+    widthH = round(float(values['H_width'])/mH, 3)
+    
     print 'For mA =', mA, 'tan(beta) =', tanb, 'obtain:'
     print '  widthA =', widthA
     print '  widthH =', widthH
     print '  mH =', mH
     
-    for input_sig, input_bkg in zip(inputs_sig, inputs_bkg):
-        print 'morph_mass.py {} {} A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {mA}'.format(input_sig, input_bkg, mA=mA)
-        os.system('morph_mass.py {} {} A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {mA}'.format(input_sig, input_bkg, mA=mA))
-        os.system('morph_mass.py {} {} H --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {mH}'.format(input_sig, input_bkg, mH=mH))
+    out_file_names = inputs_bkg
 
-    import pdb; pdb.set_trace()
+    for i, (input_sig, input_bkg) in enumerate(zip(inputs_sig, inputs_bkg)):
+        # print 'morph_mass.py {} {} A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {mA}'.format(input_sig, input_bkg, mA=mA)
+        out_A = args.outfile.replace('.root', 'A{}_{}.root'.format(mA, i))
+        out_H = args.outfile.replace('.root', 'H{}_{}.root'.format(mH, i))
+        out_file_names += [out_A, out_H]
+
+        tmp_A = out_A.replace('.root', '_tmp.root')
+        tmp_H = out_H.replace('.root', '_tmp.root')
+
+        os.system('morph_mass.py {} {} A --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {} --out {}'.format(input_sig, input_bkg, mA, tmp_A))
+
+        if widthA < 2.5:
+            print 'Need width extrapolation; will create 1pc point and use this for subsequent morphing'
+            os.system('morph_width_extrapolate.py {} --out {}'.format(tmp_A, tmp_A.replace('.root', '_extr.root')))
+            tmp_A = tmp_A.replace('.root', '_extr.root')
+
+        os.system('morph_width.py {} A --nocopy --single_width {} --out {}'.format(tmp_A, widthA, out_A))
+
+        os.system('morph_mass.py {} {} H --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {} --out {}'.format(input_sig, input_bkg, mH, tmp_H))
+
+        if widthH < 2.5:
+            print 'Need width extrapolation; will create 1pc point and use this for subsequent morphing'
+            os.system('morph_width_extrapolate.py {} --out {}'.format(tmp_H, tmp_H.replace('.root', '_extr.root')))
+            tmp_H = tmp_H.replace('.root', '_extr.root')
+
+        os.system('morph_width.py {} A --nocopy --single_width {} --out {}'.format(tmp_H, widthH, out_H))
+    
+    hadd_cmd = 'hadd -f {} {}'.format(args.outfile, ' '.join(out_file_names))
+    
+    print 'Running CMD:', hadd_cmd
+    print 'NOTE: outfile will be overwritten'
+    os.system(hadd_cmd)
+
+

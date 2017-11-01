@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from timeit import default_timer as timer
 
+import resource
 
 from os import path, remove
 from argparse import ArgumentParser
@@ -136,9 +137,16 @@ def interpolate(masses, yields, test_mass, linear=True):
     f_high = (m_above - test_mass) / delta_m
     return f_low * y_below + f_high * y_above
 
+d_graphs = {}
+
 def get_int_graphs(args, width, pattern):
     g_int = None
     g_int_neg_frac = None
+    
+    name = '{}{}'.format(width, pattern)
+    if name in d_graphs:
+        return d_graphs[name]
+
     if pattern == 'pos-sgn':
         g_int = file_int.Get('{}_res_semilep_w{}_toterr'.format(args.parity, width))
 
@@ -152,6 +160,8 @@ def get_int_graphs(args, width, pattern):
 
     if not g_int:
         import pdb; pdb.set_trace()
+    
+    d_graphs[name] = g_int, g_int_neg_frac
 
     return g_int, g_int_neg_frac
 
@@ -263,12 +273,12 @@ def interpolate_per_region(d_hists_region, mass_hists, mass_scales, channel, i_c
             h_morph_region_rebin.Scale(g_int_neg_frac.Eval(test_mass))
 
         d_hists_region[i_costheta][test_mass] = h_morph_region_rebin
-        del h_morph_region # Save execution time (->ROOT)
+        h_morph_region.Delete() # Save execution time (->ROOT)
 
-    del morph
+    morph.Delete()
     # Delete items as execution time grows extremely otherwise
     for item in keeper:
-        del item
+        item.Delete()
 
 
 def main():
@@ -317,10 +327,12 @@ def main():
                 # print 'MASS', mass
                 #print '{channel}/{h_name}'.format(
                 #    channel=channel, h_name=h_name).format(MASS=mass)
-                h_ori = infile.Get('{channel}/{h_name}'.format(
-                    channel=channel, h_name=h_name).format(MASS=mass)).Clone(
+                h_to_clone = infile.Get('{channel}/{h_name}'.format(
+                    channel=channel, h_name=h_name).format(MASS=mass))
+                h_ori = h_to_clone.Clone(
     							h_name.format(MASS=mass)
     							)
+                h_to_clone.Delete()
                 #print 'MASS', mass, h_ori.GetName()
 
                 scale = 1. / g_int.Eval(mass)
@@ -349,6 +361,9 @@ def main():
             for i_costheta in xrange(N_REGIONS):
                 interpolate_per_region(d_hists_region, mass_hists, mass_scales, channel, i_costheta, h_name, g_int, g_int_neg_frac, pattern)
             
+            for hist in mass_hists.values():
+                hist.Delete()
+
             # import pdb; pdb.set_trace()
 
             # Now collate the hists from the different regions for all masses, including the available
@@ -373,16 +388,20 @@ def main():
                     h_out.Scale(args.kfactor)
 
                 h_out.Write()
+                h_out.Delete()
                 # print 'Writing', test_mass, h_out.Integral()
-
+            for s_dict in d_hists_region.values():
+                for hist in s_dict.values():
+                    hist.Delete()
             # tmp_file.Close()
-            # remove('/tmp/steggema/_tmp.root')
+            # # remove('/tmp/steggema/_tmp.root')
             gc.collect()
             ROOT.RooExpensiveObjectCache.instance().clearAll()
-            for obj in ROOT.gROOT.GetList(): #kill it, with FIRE!
-                obj.Delete()
+            # for obj in ROOT.gROOT.GetList(): #kill it, with FIRE!
+            #     obj.Delete()
             #set_trace()
             print 'Time elapsed:', timer() - start
+            print 'Peak mem used:', resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         outfile.Write()
 
 if __name__ == '__main__':

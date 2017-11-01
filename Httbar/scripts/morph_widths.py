@@ -7,6 +7,8 @@ parser.add_argument('--forchecks', action='store_true')
 parser.add_argument('--nocopy', action='store_true', help='does not copy the file to add the points, but just create the new points')
 parser.add_argument('--out', help='forces output name')
 parser.add_argument('--single', type=float)
+parser.add_argument('--single_width', type=float, help='produces single width point')
+parser.add_argument('--parity', choices=['A', 'H'], help='parity of the resonance')
 #parser.add_argument('--hyperbolic', action='store_true', help='use hyperbolic interpolation')
 args = parser.parse_args()
 
@@ -14,7 +16,10 @@ import ROOT
 import shutil
 from pdb import set_trace
 
-mapping = {str(int(val) if val.is_integer() else val).replace('.', 'p')+'pc':val for val in [1.0, 2.5, 5.0, 10., 25., 50.]}
+def valToStr(val):
+    return str(int(val) if val.is_integer() else val).replace('.', 'p')+'pc'
+
+mapping = {valToStr(val):val for val in [1.0, 2.5, 5.0, 10., 25., 50.]}
 
 checks = {
     5.0: 'checks_5pc',
@@ -40,6 +45,9 @@ for key in mapping.values():
     new_points.pop(key, None)
 if args.forchecks:
 	new_points = checks
+
+if args.single_width:
+    new_points = {args.single_width:valToStr(args.single_width)}
 
 available = set(mapping.values())
 to_make = set(new_points.keys())
@@ -86,10 +94,21 @@ else:
 for category in [i.GetName() for i in infile.GetListOfKeys()]:
     counter = 0
     tdir = infile.Get(category)
+    if args.nocopy:
+        outdir = outfile.mkdir(category)
+
     tdir.cd()
     shapes = [i.GetName() for i in tdir.GetListOfKeys()]
     shapes = [i for i in shapes if i.startswith(
         'ggA_') or i.startswith('ggH_')]
+    if args.parity:
+        if args.parity == 'A':
+            shapes = [s for s in shapes if s.startswith('ggA_')]
+        elif args.parity == 'H':
+            shapes = [s for s in shapes if s.startswith('ggH_')]
+        else:
+            raise RuntimeError('Invalid parity', args.parity)
+
     nMorph = len(shapes)*len(new_points)
     counter = 0
     shapes = {"sgn": (i for i in shapes if '_pos-sgn' in i),
@@ -103,7 +122,7 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
             if k not in shapes_map[_type]:
                 shapes_map[_type][k] = {}
             shapes_map[_type][k][w] = tdir.Get(shape)
-    import pdb; pdb.set_trace()
+
     # compute new histograms
     for _type in shapes_map:
         for key in shapes_map[_type]:
@@ -116,6 +135,8 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
                 below = shapes_map[_type][key][b]
                 above = shapes_map[_type][key][a]
                 new_name = make_name(key, width)
+                if args.nocopy:
+                    outdir.cd()
                 new_hist = below.Clone(new_name)
                 new_hist.Scale(1-factor)
                 new_hist.Add(above, factor)

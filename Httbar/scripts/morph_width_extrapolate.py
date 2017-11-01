@@ -13,7 +13,12 @@ parser.add_argument(
     '--sgnfactor', default=2.524551213, type=float, help="""Factor by which the signal shapes scale between the ref width and extrapolated width: new = ref*factor""")
 parser.add_argument(
     '--intfactor', default=1., type=float, help="""Factor by which the interference shapes scale between the ref width and extrapolated width: new = ref(factor)""")
+parser.add_argument('--out', help='forces output name')
 args = parser.parse_args()
+
+print 'FIXME - determine sgnfactor and intfactor automatically from some input'
+print '   Now assuming constant sgnfactor', args.sgnfactor
+print '   Now assuming constant intfactor', args.intfactor
 
 ref = "-{0}pc-".format(str(args.refwidth).replace(".", "p"))
 if float(int(args.width)) == args.width:
@@ -21,7 +26,7 @@ if float(int(args.width)) == args.width:
 new = "-{0}pc-".format(str(args.width).replace(".", "p"))
 for files in args.input:
     print "Loading file {0}".format(files)
-    f = files.replace(".root", "_extrapolated.root")
+    f = args.out if args.out else files.replace(".root", "_extrapolated.root")
     shutil.copyfile(files, f)
     f = ROOT.TFile(f, "UPDATE")
     for category in [i.GetName() for i in f.GetListOfKeys()]:
