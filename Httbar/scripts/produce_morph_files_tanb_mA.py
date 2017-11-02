@@ -37,9 +37,9 @@ with open(args.input_sushi) as sushi_pkl:
 
     values = values[0]
     mH = int(round(float(values['m_H'])))
-    # Widths are relative
-    widthA = round(float(values['A_width'])/mA, 3)
-    widthH = round(float(values['H_width'])/mH, 3)
+    # Widths are relative and in per cent
+    widthA = round(float(values['A_width'])/mA*100., 1)
+    widthH = round(float(values['H_width'])/mH*100., 1)
     
     print 'For mA =', mA, 'tan(beta) =', tanb, 'obtain:'
     print '  widthA =', widthA
@@ -64,7 +64,7 @@ with open(args.input_sushi) as sushi_pkl:
             os.system('morph_width_extrapolate.py {} --out {}'.format(tmp_A, tmp_A.replace('.root', '_extr.root')))
             tmp_A = tmp_A.replace('.root', '_extr.root')
 
-        os.system('morph_width.py {} A --nocopy --single_width {} --out {}'.format(tmp_A, widthA, out_A))
+        os.system('morph_widths.py {} --nocopy --single_width {} --out {}'.format(tmp_A, widthA, out_A))
 
         os.system('morph_mass.py {} {} H --algo NonLinearPosFractions --input_masses 400,500,600,750 --single_mass {} --out {}'.format(input_sig, input_bkg, mH, tmp_H))
 
@@ -73,7 +73,7 @@ with open(args.input_sushi) as sushi_pkl:
             os.system('morph_width_extrapolate.py {} --out {}'.format(tmp_H, tmp_H.replace('.root', '_extr.root')))
             tmp_H = tmp_H.replace('.root', '_extr.root')
 
-        os.system('morph_width.py {} A --nocopy --single_width {} --out {}'.format(tmp_H, widthH, out_H))
+        os.system('morph_widths.py {} --nocopy --single_width {} --out {}'.format(tmp_H, widthH, out_H))
     
     hadd_cmd = 'hadd -f {} {}'.format(args.outfile, ' '.join(out_file_names))
     

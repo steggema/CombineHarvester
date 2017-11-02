@@ -1,3 +1,0 @@
--Example
-> python PlotShapeRatio template_ALL*.root --criteria 2p5pc-,-5pc-
--Usage: Plots the ratio between two normalized shapes of different widths, e.g. "--criteria 2p5pc-,-5pc-" will plot the normalized widths at 2p5pc and 5pc with a ratio plot
