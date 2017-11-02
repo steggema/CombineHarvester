@@ -7,6 +7,7 @@ parser.add_argument('--forchecks', action='store_true')
 parser.add_argument('--nocopy', action='store_true', help='does not copy the file to add the points, but just create the new points')
 parser.add_argument('--out', help='forces output name')
 parser.add_argument('--single', type=float)
+parser.add_argument('--filter', default='*')
 #parser.add_argument('--hyperbolic', action='store_true', help='use hyperbolic interpolation')
 args = parser.parse_args()
 
@@ -14,6 +15,7 @@ import ROOT
 import shutil
 import re
 from pdb import set_trace
+from fnmatch import fnmatch
 
 mapping = {
   '1pc' : 1.0,
@@ -39,9 +41,10 @@ new_points = {
 }
 '''
 widths = np.arange(2.5,50,0.5)
+val2name = lambda x: "%s%s" % (str(x).replace('.','p').replace('p0',''),"pc")
 if args.single:
 	widths = [args.single]
-new_points = dictionary = dict(zip(list(np.arange(2.5,50,0.5)),list("%s%s" % (str(x).replace('.','p').replace('p0',''),"pc") for x in widths)))
+new_points = dictionary = dict((i, val2name(i)) for i in widths)
 for key in mapping.values():
  new_points.pop(key,None)
 if args.forchecks:
@@ -79,18 +82,27 @@ if args.out:
 if args.nocopy:
 	infile = ROOT.TFile(args.inputfile)
 	outfile = ROOT.TFile(outname, 'recreate')
+	outfile.cd()
 else:
 	shutil.copyfile(args.inputfile, outname)
 	infile = ROOT.TFile(outname, 'UPDATE')
+	outfile = None
+
 for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	counter = 0
-	tdir = infile.Get(category)
-	tdir.cd()
-	shapes = [i.GetName() for i in tdir.GetListOfKeys()]
+	indir = infile.Get(category)
+	indir.cd()
+	shapes = [i.GetName() for i in indir.GetListOfKeys()]
+	if outfile:
+		odir = outfile.mkdir(indir.GetName())
+		odir.cd()
+	else:
+		odir = indir
 	if args.forchecks:
 		shapes = [i for i in shapes if not (i.endswith('Up') or i.endswith('Down'))]
 	shapes = [i for i in shapes if (i.startswith('ggA_') or i.startswith('ggH_')) and not i.endswith('_')]
 	nMorph = len(shapes)*len(new_points)
+	shapes = [i for i in shapes if fnmatch(i, args.filter)]
 	counter = 0
 	shapes = { "sgn" : (i for i in shapes if '_pos-sgn' in i), "int" : (i for i in shapes if '-int-' in i)}
 	#there are still a lot of spurious shapes, remove them
@@ -101,7 +113,7 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	  k, w = get_info(shape)
 	  if k not in shapes_map[_type]:
 	   shapes_map[_type][k] = {}
-	  shapes_map[_type][k][w] = tdir.Get(shape)
+	  shapes_map[_type][k][w] = indir.Get(shape)
 	#compute new histograms
 	for _type in shapes_map:
 	 for key in shapes_map[_type]:
