@@ -107,25 +107,35 @@ signal_shape_uncertainties = [
 ll_bbb_template = 'TT_CMS_httbar_%s_MCstatBin'
 lj_bbb_template = 'TT_CMS_httbar_%s_MCstatBin'
 
-def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb'):
-	patterns = ['gg{mode}_pos-sgn-{width}pc-M', 'gg{mode}_pos-int-{width}pc-M',  'gg{mode}_neg-int-{width}pc-M']
+def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb', masses=None):
+	patterns = ['gg{mode}_pos-sgn-{width}pc-M{mass}', 'gg{mode}_pos-int-{width}pc-M{mass}',  'gg{mode}_neg-int-{width}pc-M{mass}']
 
 	procs = {
-		'sig': [pattern.format(mode=mode, width=width) for width in widths for pattern in patterns for mode in modes],
-		'bkg': ['WJets', 'tWChannel', 'tChannel', 'sChannel', 'VV', 'ZJets', 'TT', 'TTV'],
+        'bkg': ['WJets', 'tWChannel', 'tChannel', 'sChannel', 'VV', 'ZJets', 'TT', 'TTV'],
 		# 'bkg_mu':['QCDmujets'], # Ignore QCD for now because of extreme bbb uncertainties
 		'bkg_mu':['QCDmujets'],
 		'bkg_e':['QCDejets']
 	}
-	
 	procs_ll = {
-		'sig': [pattern.format(mode=mode, width=width) for width in widths for pattern in patterns for mode in modes],
-		'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTW', 'TTZ'],
+	    'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTW', 'TTZ'],
 	}
+
+	if not any('A:' in x or 'H:' in x for x in widths):
+		procs['sig'] = [pattern.format(mode=mode, width=width, mass='') for width in widths for pattern in patterns for mode in modes]
+		
+		procs_ll['sig'] = [pattern.format(mode=mode, width=width, mass='') for width in widths for pattern in patterns for mode in modes]
+	else:
+		procs['sig'] = []
+		procs_ll['sig'] = []
+		for mode in modes:
+			mode_masses = [a.split(':')[1] for a in masses if mode+':' in a]
+			mode_widths =  [a.split(':')[1] for a in widths if mode+':' in a]
+			procs['sig'] += [pattern.format(mode=mode, width=width, mass=mass) for width in mode_widths for pattern in patterns for mass in mode_masses]
+			procs_ll['sig'] += [pattern.format(mode=mode, width=width, mass=mass) for width in mode_widths for pattern in patterns for mass in mode_masses]
 
 	return procs if chan == 'lj' else procs_ll
 
-def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600', '750']):
+def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600', '750'], addBBB=True):
 	print '\n\n------------   LL LIMIT SETTING   ------------'
 	cat_ids = [cat_mapping[i] for i in ['ll']]
 	cats = [(cat_mapping[i], i) for i in ['ll']]
@@ -134,15 +144,16 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 	cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], cats, True)
 
 	bbb_systematics = {}
-	tf = ROOT.TFile(in_file)
-	for category in ['ll']:
-		cat_dir = tf.Get(category)
-		histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
-		sys_name = ll_bbb_template % category
-		bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')] #strip tt_...Up
-		bbb_systematics[cat_mapping[category]] = bbbs
-		print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
-	tf.Close()
+	if addBBB:
+		tf = ROOT.TFile(in_file)
+		for category in ['ll']:
+			cat_dir = tf.Get(category)
+			histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
+			sys_name = ll_bbb_template % category
+			bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')] #strip tt_...Up
+			bbb_systematics[cat_mapping[category]] = bbbs
+			print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
+		tf.Close()
 
 	print '>> Adding systematic uncertainties...'
 
@@ -169,10 +180,11 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 			cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, 0.166667 if shape_uncertainty=='TMass' else 1.))
 
 	#BIN BY BIN
-	for category, bbbs in bbb_systematics.iteritems():
-		for bbb in bbbs:
-			cb.cp().process(['TT']).AddSyst(
-				cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
+	if addBBB:
+		for category, bbbs in bbb_systematics.iteritems():
+			for bbb in bbbs:
+				cb.cp().process(['TT']).AddSyst(
+					cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
 
 	#SIGNAL SHAPE UNCERTAINTIES
 	for unc_name in signal_shape_uncertainties:
@@ -185,20 +197,22 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 			ch.SystMap('bin_id')(cat_ids, 1.)
 			)
 
-def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses=['400', '500', '600', '750']):
+def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses=['400', '500', '600', '750'], addBBB=True):
 	print '\n\n------------   L+J LIMIT SETTING   ------------'
 	cat_ids = [cat_mapping[i] for i in ['mujets', 'ejets']]
 
 	bbb_systematics = {}
-	tf = ROOT.TFile(in_file)
-	for category in ['mujets', 'ejets']:
-		cat_dir = tf.Get(category)
-		histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
-		sys_name = lj_bbb_template % category
-		bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')]
-		bbb_systematics[cat_mapping[category]] = bbbs
-		print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
-	tf.Close()
+
+	if addBBB:
+		tf = ROOT.TFile(in_file)
+		for category in ['mujets', 'ejets']:
+			cat_dir = tf.Get(category)
+			histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
+			sys_name = lj_bbb_template % category
+			bbbs = [i[3:-2] for i in histos if i.startswith(sys_name) and i.endswith('Up')]
+			bbb_systematics[cat_mapping[category]] = bbbs
+			print 'found %d bin-by-bin uncertainties for %s' % (len(bbbs), category)
+		tf.Close()
 
 	if channel in ['cmb', 'ej', 'lj']:
 		ecat = [(cat_mapping['ejets'], 'ejets')]
@@ -242,10 +256,11 @@ def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses
 			cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, 0.166667 if shape_uncertainty=='TMass' else 1.))
 
 	#BIN BY BIN
-	for category, bbbs in bbb_systematics.iteritems():
-		for bbb in bbbs:
-			cb.cp().process(['TT']).AddSyst(
-				cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
+	if addBBB:
+		for category, bbbs in bbb_systematics.iteritems():
+			for bbb in bbbs:
+				cb.cp().process(['TT']).AddSyst(
+					cb, bbb, 'shape', ch.SystMap('bin_id')([category], 1.))
 
 	#SIGNAL SHAPE UNCERTAINTIES
 	for unc_name in signal_shape_uncertainties:
@@ -288,7 +303,7 @@ def performMorphing(cb, procs, m_min=400., m_max=750., mass_debug=False):
 	#			   RooAbsReal& mass_var, std::string norm_postfix,
 	#			   bool allow_morph, bool verbose, bool force_template_limit, TFile * file)
 
-def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=True):
+def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=True, limitdir = ""):
 	print '>> Setting standardised bin names...'
 	ch.SetStandardBinNames(cb)
 	
@@ -305,7 +320,10 @@ def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=Tr
 		writer.SetWildcardMasses([])
 	
 	writer.SetVerbosity(1 if verbose else 0)
-	writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=jobid, mode=mode, width=width), cb)
+	if limitdir == "":
+	 writer.WriteCards('output{jobid}/{mode}_{width}'.format(jobid=jobid, mode=mode, width=width), cb)
+	else:
+	 writer.WriteCards('{limitdir}/{mode}_{width}'.format(limitdir=limitdir, mode=mode, width=width), cb)
 	# writer.WriteCards('output_comb/', cb)
 
 
@@ -322,12 +340,16 @@ if __name__ == '__main__':
 		'--doMorph', action='store_true', dest='doMorph', help='apply mass morphing', default=False)
 	parser.add_argument(
 		'--silent', action='store_true', dest='silent', default=False)
+	parser.add_argument('--indir', default=os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/', help='Input directories containing the data files')
+	parser.add_argument('--limitdir', default="", help='Output limit directories') 
 
 	args = parser.parse_args()
 	addBBB = args.addBBB
 	doMorph = args.doMorph
 
-	aux_shapes = os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/'
+	aux_shapes = args.indir
+	#set_trace()
+
 	in_file = aux_shapes + 'templates_ALL_%s.root' % args.jobid
 	in_file_lj = aux_shapes + 'templates_lj_%s.root' % args.jobid
 	in_file_ll = aux_shapes + 'templates_ll_%s.root' % args.jobid
@@ -348,36 +370,49 @@ if __name__ == '__main__':
 	category_to_id = {a:b for b, a in categories}
 
 	print masses, widths, modes
+    
+	special = False
+	if any('A:' in x or 'H:' in x for x in widths):
+		widths = [widths]
+		special = True
 
-	for mode in modes:
-		for width in widths:
-			cb = ch.CombineHarvester()
-			cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
 
-			if args.channels != 'll':
-				procs = createProcessNames([width], [mode], 'lj')
-				prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj, args.channels, masses)
+	# for mode in modes:
+	for width in widths:
+		cb = ch.CombineHarvester()
+		cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
 
-			if args.channels in ['ll', 'cmb']:
-				procs = createProcessNames([width], [mode], 'll')
-				prepareDiLepton(cb, category_to_id, procs, in_file_ll, masses)
+		if args.channels != 'll':
+			procs = createProcessNames(width if special else [width], modes, 'lj', masses)
+			prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj if args.channels == 'lj' else in_file, args.channels, [''] if special else masses, addBBB=addBBB)
 
-			print '>> Extracting histograms from input root files...'
-			cb.cp().backgrounds().ExtractShapes(
-				in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC'
-				)
-			cb.cp().signals().ExtractShapes(
-				in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC'
-				)
+		if args.channels in ['ll', 'cmb']:
+			procs = createProcessNames(width if special else [width], modes, 'll', masses)
+			prepareDiLepton(cb, category_to_id, procs, in_file_ll if args.channels == 'll' else in_file, [''] if special else masses, addBBB=addBBB)
 
-			## if addBBB:
-			## 	addBinByBin(cb)
-			
-			if doMorph:
-				f_masses = [float(m) for m in masses]
-				performMorphing(cb, procs, min(f_masses), max(f_masses))
+		print '>> Extracting histograms from input root files...'
+		cb.cp().backgrounds().ExtractShapes(
+			in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC'
+			)
+		cb.cp().signals().ExtractShapes(
+			in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC'
+			)
 
-			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode, width, doMorph, verbose=not args.silent)
+		## if addBBB:
+		## 	addBinByBin(cb)
+		
+		if doMorph:
+			f_masses = [float(m) for m in masses]
+			performMorphing(cb, procs, min(f_masses), max(f_masses))
+		mode_name = '_'.join(modes)
+		width_name = width
+		if special:
+			mode_name = 'A_'
+			mode_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'A' in a])
+			width_name = 'H_'
+			width_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'H' in a])
+
+		writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent,limitdir = args.limitdir)
 
 	print '>> Done!'
 
