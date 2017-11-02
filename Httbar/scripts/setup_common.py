@@ -107,21 +107,31 @@ signal_shape_uncertainties = [
 ll_bbb_template = 'TT_CMS_httbar_%s_MCstatBin'
 lj_bbb_template = 'TT_CMS_httbar_%s_MCstatBin'
 
-def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb'):
-	patterns = ['gg{mode}_pos-sgn-{width}pc-M', 'gg{mode}_pos-int-{width}pc-M',  'gg{mode}_neg-int-{width}pc-M']
+def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb', masses=None):
+	patterns = ['gg{mode}_pos-sgn-{width}pc-M{mass}', 'gg{mode}_pos-int-{width}pc-M{mass}',  'gg{mode}_neg-int-{width}pc-M{mass}']
 
 	procs = {
-		'sig': [pattern.format(mode=mode, width=width) for width in widths for pattern in patterns for mode in modes],
-		'bkg': ['WJets', 'tWChannel', 'tChannel', 'sChannel', 'VV', 'ZJets', 'TT', 'TTV'],
+        'bkg': ['WJets', 'tWChannel', 'tChannel', 'sChannel', 'VV', 'ZJets', 'TT', 'TTV'],
 		# 'bkg_mu':['QCDmujets'], # Ignore QCD for now because of extreme bbb uncertainties
 		'bkg_mu':['QCDmujets'],
 		'bkg_e':['QCDejets']
 	}
-	
 	procs_ll = {
-		'sig': [pattern.format(mode=mode, width=width) for width in widths for pattern in patterns for mode in modes],
-		'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTW', 'TTZ'],
+	    'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTW', 'TTZ'],
 	}
+
+	if not any('A:' in x or 'H:' in x for x in widths):
+		procs['sig'] = [pattern.format(mode=mode, width=width, mass='') for width in widths for pattern in patterns for mode in modes]
+		
+		procs_ll['sig'] = [pattern.format(mode=mode, width=width, mass='') for width in widths for pattern in patterns for mode in modes]
+	else:
+		procs['sig'] = []
+		procs_ll['sig'] = []
+		for mode in modes:
+			mode_masses = [a.split(':')[1] for a in masses if mode+':' in a]
+			mode_widths =  [a.split(':')[1] for a in widths if mode+':' in a]
+			procs['sig'] += [pattern.format(mode=mode, width=width, mass=mass) for width in mode_widths for pattern in patterns for mass in mode_masses]
+			procs_ll['sig'] += [pattern.format(mode=mode, width=width, mass=mass) for width in mode_widths for pattern in patterns for mass in mode_masses]
 
 	return procs if chan == 'lj' else procs_ll
 
@@ -360,6 +370,12 @@ if __name__ == '__main__':
 	category_to_id = {a:b for b, a in categories}
 
 	print masses, widths, modes
+    
+	special = False
+	if any('A:' in x or 'H:' in x for x in widths):
+		widths = [widths]
+		special = True
+
 
 	# for mode in modes:
 	for width in widths:
@@ -367,12 +383,12 @@ if __name__ == '__main__':
 		cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
 
 		if args.channels != 'll':
-			procs = createProcessNames([width], modes, 'lj')
-			prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj, args.channels, masses, addBBB=addBBB)
+			procs = createProcessNames(width if special else [width], modes, 'lj', masses)
+			prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj if args.channels == 'lj' else in_file, args.channels, [''] if special else masses, addBBB=addBBB)
 
 		if args.channels in ['ll', 'cmb']:
-			procs = createProcessNames([width], modes, 'll')
-			prepareDiLepton(cb, category_to_id, procs, in_file_ll, masses, addBBB=addBBB)
+			procs = createProcessNames(width if special else [width], modes, 'll', masses)
+			prepareDiLepton(cb, category_to_id, procs, in_file_ll if args.channels == 'll' else in_file, [''] if special else masses, addBBB=addBBB)
 
 		print '>> Extracting histograms from input root files...'
 		cb.cp().backgrounds().ExtractShapes(
@@ -389,7 +405,14 @@ if __name__ == '__main__':
 			f_masses = [float(m) for m in masses]
 			performMorphing(cb, procs, min(f_masses), max(f_masses))
 		mode_name = '_'.join(modes)
-		writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width, doMorph, verbose=not args.silent,limitdir = args.limitdir)
+		width_name = width
+		if special:
+			mode_name = 'A_'
+			mode_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'A' in a])
+			width_name = 'H_'
+			width_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'H' in a])
+
+		writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent,limitdir = args.limitdir)
 
 	print '>> Done!'
 
