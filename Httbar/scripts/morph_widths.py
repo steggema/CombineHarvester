@@ -6,6 +6,7 @@ parser.add_argument('inputfile')
 parser.add_argument('--forchecks', action='store_true')
 parser.add_argument('--nocopy', action='store_true', help='does not copy the file to add the points, but just create the new points')
 parser.add_argument('--out', help='forces output name')
+parser.add_argument('--kfactors')
 parser.add_argument('--single', type=float)
 parser.add_argument('--filter', default='*')
 #parser.add_argument('--hyperbolic', action='store_true', help='use hyperbolic interpolation')
@@ -16,6 +17,14 @@ import shutil
 import re
 from pdb import set_trace
 from fnmatch import fnmatch
+import json
+import os
+
+kfactors = None
+if args.kfactors:
+	if not os.path.isfile(args.kfactors):
+		raise IOError('File: %s does not exist' % args.kfactors)
+	kfactors = json.loads(open(args.kfactors).read())
 
 mapping = {
   '1pc' : 1.0,
@@ -114,6 +123,18 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	  if k not in shapes_map[_type]:
 	   shapes_map[_type][k] = {}
 	  shapes_map[_type][k][w] = indir.Get(shape)
+	  
+	  key = '_'.join([
+			k[0].split('_')[0]+'_'+k[1],
+			k[2][:4], #remove everything after the mass
+			'%.1f' % w
+	  ])
+	  
+	  if kfactors:
+	   if key not in kfactors:
+	    print 'skipping key %s as not found in json' % key
+	    continue
+	   shapes_map[_type][k][w].Scale(kfactors[key])
 	#compute new histograms
 	for _type in shapes_map:
 	 for key in shapes_map[_type]:
