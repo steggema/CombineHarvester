@@ -20,7 +20,6 @@ with open(args.input_sushi) as sushi_pkl:
 
 with open('%s/condor.jdl' % args.outdir, 'w') as jdl:
 	jdl.write('''
-use_x509userproxy = True
 Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
 getenv = True
