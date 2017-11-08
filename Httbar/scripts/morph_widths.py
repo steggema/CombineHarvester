@@ -40,15 +40,13 @@ checks = {
 	10. : 'checks_10pc',
 	25. : 'checks_25pc',	
 }
-'''
-new_points = {
-	7.0 : '7pc' ,
-	15. : '15pc',
-	20. : '20pc',	
-	30. : '30pc',	
-	40. : '40pc',	
-}
-'''
+
+xsections = ROOT.TFile(os.path.expandvars(
+    '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root')),
+neg_ratio = ROOT.TFile(path.expandvars(
+    '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_SEweight_and_NegEvtsFrac_vs_mass.root'))
+		
+
 widths = np.arange(2.5,50,0.5)
 val2name = lambda x: "%s%s" % (str(x).replace('.','p').replace('p0',''),"pc")
 if args.single:
@@ -67,11 +65,11 @@ if len(intersection) and not args.forchecks:
 
 interpolation = {}
 for point in to_make:
-	above = sorted([i for i in available if point < i])
-	below = sorted([i for i in available if point > i])
+	above = [i for i in available if point < i]
+	below = [i for i in available if point > i]
 	if not above or not below:
 		raise ValueError('I cannot interpolate %s as it is outside the provided range!' % point)
-	interpolation[point] = (below[-1], above[0])
+	interpolation[point] = (max(below), min(above))
 
 def get_info(name):
 	try:
@@ -135,6 +133,40 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	    print 'skipping key %s as not found in json' % key
 	    continue
 	   shapes_map[_type][k][w].Scale(kfactors[key])
+	
+	#extrapolation (if needed)
+	if min(new_points.keys()) < 2.5: #yes, hardcoded
+		print 'Extrapolating to 1% width'
+		for val in shapes_map.itervalues():
+			for info, vval in val.iteritems():
+				parity_and_sign, proc, mass = info
+				mass = int(mass[1:4])
+				parity = parity_and_sign[2]
+				sign = parity_and_sign[-3:]
+				proc = proc.replace('sgn', 'res')
+				xsec_2p5 = xsections.Get(
+					'{}_{}_semilep_w2p5_toterr'.format(
+						parity, proc
+						)
+					).Eval(mass)
+				xsec_1 = xsections.Get(
+          '{}_{}_semilep_w1_toterr'.format(
+            parity, proc
+            )
+          ).Eval(mass)
+				if proc == 'int':
+					frac_2p5 = neg_ratio.Get(
+						'{}_int_semilep_w2p5_NegEvts_Frac'.format(parity)
+						).Eval(mass)
+					frac_1 = neg_ratio.Get(
+						'{}_int_semilep_w1_NegEvts_Frac'.format(parity)
+						).Eval(mass)
+					xsec_2p5 *= frac_2p5 if sign == 'neg' else (1-frac_2p5)
+					xsec_1 *= frac_1 if sign == 'neg' else (1-frac_1)
+					
+				vval[1.] = vval[2.5].Clone(vval[2.5].GetName().replace('2p5', '1'))
+				vval[1.].Scale(xsec_1/xsec_2p5)
+	
 	#compute new histograms
 	for _type in shapes_map:
 	 for key in shapes_map[_type]:

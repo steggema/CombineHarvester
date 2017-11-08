@@ -3,13 +3,15 @@
 from argparse import ArgumentParser
 from numpy import array
 import gc
+from pdb import set_trace
 
 parser = ArgumentParser()
 parser.add_argument('inputfile')
 parser.add_argument('output')
 args = parser.parse_args()
 
-infile = open(args.inputfile).read()
+infile = open(args.inputfile).read().replace('\r', '')
+set_trace()
 blocks = infile.split('\n\n')
 #remove header
 blocks[0] = '\n'.join(blocks[0].split('\n')[3:])
@@ -17,8 +19,9 @@ blocks[0] = '\n'.join(blocks[0].split('\n')[3:])
 name_conversion = {
 	'PScalar res' : 'ggA_sgn',
 	'Scalar res' : 'ggH_sgn',
+	'PScalar Int' : 'ggA_int',
+	'Scalar Int' : 'ggH_int',
 }
-
 retval = {}
 for block in blocks:
 	if not block.strip(): continue
@@ -29,6 +32,7 @@ for block in blocks:
 
 	lines = lines[2:]
 	for line in lines:
+		if not line.strip(): continue
 		values = [float(i) for i in line.split()]
 		width = values[0]
 		factors = values[1:]
