@@ -75,12 +75,12 @@ with open(args.input_sushi) as sushi_pkl:
 			'A_{}_{}_H_{}_{}/higgsCombine.limit.Asymptotic.mH120.root').format(
 			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
 			))
-shutil.move('limits.json', 'mA%d_tanb%.2f.json' % (mA, tanb))
+shutil.move('limits.json', 'mA%d_tanb%s.json' % (mA, tanb))
 shutil.rmtree(
         'A_{}_{}_H_{}_{}'.format(
                 val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
                 )
         )
 for fname in glob('*.root'):
-        shutil.rmtree(fname)
+	os.remove(fname)
 

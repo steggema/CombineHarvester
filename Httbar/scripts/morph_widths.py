@@ -43,7 +43,7 @@ checks = {
 
 xsections = ROOT.TFile(os.path.expandvars(
     '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root')),
-neg_ratio = ROOT.TFile(path.expandvars(
+neg_ratio = ROOT.TFile(os.path.expandvars(
     '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_SEweight_and_NegEvtsFrac_vs_mass.root'))
 		
 

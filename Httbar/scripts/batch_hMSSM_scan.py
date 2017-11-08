@@ -24,9 +24,10 @@ Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
 getenv = True
 executable = %s
++MaxRuntime = 21600
 
 ''' % spawn.find_executable('produce_morph_files_tanb_mA.py'))
-	for idx, point in enumerate([(650, 1)]):#mapping.keys()):
+	for idx, point in enumerate(mapping.keys()):
 		ma, tanb = point
 		jdl.write('''
 Output = con_{idx}.stdout
