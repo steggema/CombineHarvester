@@ -42,7 +42,7 @@ checks = {
 }
 
 xsections = ROOT.TFile(os.path.expandvars(
-    '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root')),
+    '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root'))
 neg_ratio = ROOT.TFile(os.path.expandvars(
     '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_SEweight_and_NegEvtsFrac_vs_mass.root'))
 		
@@ -144,22 +144,20 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 				parity = parity_and_sign[2]
 				sign = parity_and_sign[-3:]
 				proc = proc.replace('sgn', 'res')
-				xsec_2p5 = xsections.Get(
-					'{}_{}_semilep_w2p5_toterr'.format(
-						parity, proc
-						)
-					).Eval(mass)
-				xsec_1 = xsections.Get(
-          '{}_{}_semilep_w1_toterr'.format(
-            parity, proc
-            )
-          ).Eval(mass)
+				xsec_2p5 = xsections.Get('pp_{}0_RES_SL_w2p5_toterr'.format(parity.lower())).Eval(mass) \
+					if proc == 'res' else \
+					neg_ratio.Get('pp_{}0_INT_SL_w2p5_SEweight'.format(parity.lower())).Eval(mass)
+
+				xsec_1 = xsections.Get('pp_{}0_RES_SL_w1_toterr'.format(parity.lower())).Eval(mass) \
+					 if proc == 'res' else \
+					 neg_ratio.Get('pp_{}0_INT_SL_w1_SEweight'.format(parity.lower())).Eval(mass)
+				
 				if proc == 'int':
 					frac_2p5 = neg_ratio.Get(
-						'{}_int_semilep_w2p5_NegEvts_Frac'.format(parity)
+						'pp_{}0_INT_SL_w2p5_NegEvts_Frac'.format(parity.lower())
 						).Eval(mass)
 					frac_1 = neg_ratio.Get(
-						'{}_int_semilep_w1_NegEvts_Frac'.format(parity)
+						'pp_{}0_INT_SL_w1_NegEvts_Frac'.format(parity.lower())
 						).Eval(mass)
 					xsec_2p5 *= frac_2p5 if sign == 'neg' else (1-frac_2p5)
 					xsec_1 *= frac_1 if sign == 'neg' else (1-frac_1)

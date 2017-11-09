@@ -9,6 +9,7 @@ import pickle
 from argparse import ArgumentParser
 import shutil
 from glob import glob
+from pdb import set_trace
 
 parser = ArgumentParser()
 parser.add_argument('jobid')
@@ -49,12 +50,17 @@ with open(args.input_sushi) as sushi_pkl:
 	print '  widthA =', widthA
 	print '  widthH =', widthH
 	print '  mH =', mH
+	if widthH < 1. or widthA < 1.:
+		print 'LIMITING WIDTH TO 1%'
+		widthA = max(widthA, 1.)
+		widthH = max(widthH, 1.)
 	
 	os.system('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
 	os.system(
 		'hadd -f templates_ALL_POINT.root TESTME.root '
 		'%s/src/CombineHarvester/Httbar/data/templates_l?_bkg_2017Aug04.root' % os.environ['CMSSW_BASE']
 		)
+	print '\n\ncreating workspace\n\n'
 	os.system((
 			'setup_common.py POINT --indir=./ --limitdir=./'
 			' --masses="A:{},H:{}" --widths="A:{},H:{}"').format(
@@ -65,6 +71,7 @@ with open(args.input_sushi) as sushi_pkl:
 			'.CombineTools.InterferenceModel:interferenceModel').format(
 			val2name(widthA), mA, val2name(widthH), mH
 			))
+	print '\n\nRunning LIMIT\n\n'
 	os.system((
 			'combineTool.py -M Asymptotic -d A_{}_{}_H_{}_{}/workspace.root --there -n'
 			' .limit --minimizerTolerance=0.0001 --minimizerStrategy=2').format(

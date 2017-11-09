@@ -17,7 +17,7 @@ parser.add_argument('--algo', default='NonLinearPosFractions',
                     help="Choose morphing algo")
 parser.add_argument('--input_masses', default='400,500,600,750',
                     help='comma separated list of masses')
-parser.add_argument('--widths', default='2p5,5,10,25,50',
+parser.add_argument('--widths', default='1,2p5,5,10,25,50',
                     help='comma separated list of widths')
 parser.add_argument('--stepsize', default='50')
 parser.add_argument('--interpolate', default='True')
@@ -195,28 +195,32 @@ for channel in channels:
         g_int = None
         g_int_neg_frac = None
         if pattern == 'pos-sgn':
-            g_int = file_int.Get('{}_res_semilep_w{}_toterr'.format(args.parity, width))
+            g_int = file_int.Get('pp_{}0_RES_SL_w{}_toterr'.format(args.parity.lower(), width))
             if not g_int:
             	print "interpolating cross sections"
             	#set_trace()
             	g_int = graph_interpolation(
-            		width, file_int, args.parity, 
-            		'{}_res_semilep_w{}_toterr', hyperbolic
+            		width, file_int, args.parity.lower(), 
+            		'pp_{}0_RES_SL_w{}_toterr', hyperbolic
             		)
 				
         if pattern in ['pos-int', 'neg-int']:
-            g_int = file_int_int.Get('{}_int_semilep_w{}_SEweight'.format(args.parity, width))
-            g_int_neg_frac = file_int_int.Get('{}_int_semilep_w{}_NegEvts_Frac'.format(args.parity, width))
+            g_int = file_int_int.Get(
+							'pp_{}0_INT_SL_w{}_SEweight'.format(args.parity.lower(), width)
+							)
+            g_int_neg_frac = file_int_int.Get(
+							'pp_{}0_INT_SL_w{}_NegEvts_Frac'.format(args.parity.lower(), width)
+							)
             if not g_int:
             	print "interpolating cross sections"
             	#set_trace()
             	g_int = graph_interpolation(
-            		width, file_int_int, args.parity, 
-            		'{}_int_semilep_w{}_SEweight', linear
+            		width, file_int_int, args.parity.lower(), 
+            		'pp_{}0_INT_SL_w{}_SEweight', linear
             		)
             	g_int_neg_frac = graph_interpolation(
-            		width, file_int_int, args.parity,
-            		'{}_int_semilep_w{}_NegEvts_Frac', linear
+            		width, file_int_int, args.parity.lower(),
+            		'pp_{}0_INT_SL_w{}_NegEvts_Frac', linear
             		)
             # print pattern
             # for m in [400., 450., 500., 600., 700.]:
