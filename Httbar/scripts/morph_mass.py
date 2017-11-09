@@ -92,15 +92,15 @@ def graph2arr(graph):
 	return array(xs), array(ys)
 
 def graph_interpolation(width, file_int, parity, name_format, interpolation):
-	with_value = name2val(width)
-	above = min(i for i in widths_vals if i > with_value)
-	below = max(i for i in widths_vals if i < with_value)
+	width_value = name2val(width)
+	above = min(i for i in widths_vals if i > width_value)
+	below = max(i for i in widths_vals if i < width_value)
 	g_abv = file_int.Get(name_format.format(parity, val2name(above).replace('pc', '')))
 	g_blw = file_int.Get(name_format.format(parity, val2name(below).replace('pc', '')))
 
 	xs, y_above = graph2arr(g_abv)
 	_, y_below = graph2arr(g_blw)
-	factor = interpolation(with_value, above, below)
+	factor = interpolation(width_value, above, below)
 	y_new = y_below*(1-factor)+y_above*factor
 	ret = g_blw.Clone(name_format.format(parity,width))
 	for i, xy in enumerate(zip(xs, y_new)):
@@ -195,7 +195,11 @@ for channel in channels:
         g_int = None
         g_int_neg_frac = None
         if pattern == 'pos-sgn':
-            g_int = file_int.Get('pp_{}0_RES_SL_w{}_toterr'.format(args.parity.lower(), width))
+            g_int = file_int.Get(
+							'pp_{}0_RES_SL_w{}_toterr'.format(
+								args.parity.lower(), width.replace('pc','')
+								)
+							)
             if not g_int:
             	print "interpolating cross sections"
             	#set_trace()
@@ -206,10 +210,14 @@ for channel in channels:
 				
         if pattern in ['pos-int', 'neg-int']:
             g_int = file_int_int.Get(
-							'pp_{}0_INT_SL_w{}_SEweight'.format(args.parity.lower(), width)
+							'pp_{}0_INT_SL_w{}_SEweight'.format(
+								args.parity.lower(), width.replace('pc','')
+								)
 							)
             g_int_neg_frac = file_int_int.Get(
-							'pp_{}0_INT_SL_w{}_NegEvts_Frac'.format(args.parity.lower(), width)
+							'pp_{}0_INT_SL_w{}_NegEvts_Frac'.format(
+								args.parity.lower(), width.replace('pc','')
+								)
 							)
             if not g_int:
             	print "interpolating cross sections"

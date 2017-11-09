@@ -11,6 +11,12 @@ import shutil
 from glob import glob
 from pdb import set_trace
 
+def syscall(cmd):
+	print 'Executing: %s' % cmd
+	retval = os.system(cmd)
+	if retval != 0:
+		raise RuntimeError('Command failed!')
+
 parser = ArgumentParser()
 parser.add_argument('jobid')
 parser.add_argument('mA', type=int)
@@ -55,29 +61,29 @@ with open(args.input_sushi) as sushi_pkl:
 		widthA = max(widthA, 1.)
 		widthH = max(widthH, 1.)
 	
-	os.system('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
-	os.system(
+	syscall('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
+	syscall(
 		'hadd -f templates_ALL_POINT.root TESTME.root '
 		'%s/src/CombineHarvester/Httbar/data/templates_l?_bkg_2017Aug04.root' % os.environ['CMSSW_BASE']
 		)
 	print '\n\ncreating workspace\n\n'
-	os.system((
+	syscall((
 			'setup_common.py POINT --indir=./ --limitdir=./'
 			' --masses="A:{},H:{}" --widths="A:{},H:{}"').format(
 			mA, mH, val2name(widthA), val2name(widthH)
 			))
-	os.system((
+	syscall((
 			'combineTool.py -M T2W -i A_{}_{}_H_{}_{} -o workspace.root -P CombineHarvester'
 			'.CombineTools.InterferenceModel:interferenceModel').format(
 			val2name(widthA), mA, val2name(widthH), mH
 			))
 	print '\n\nRunning LIMIT\n\n'
-	os.system((
+	syscall((
 			'combineTool.py -M Asymptotic -d A_{}_{}_H_{}_{}/workspace.root --there -n'
 			' .limit --minimizerTolerance=0.0001 --minimizerStrategy=2').format(
 			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
 			))
-	os.system((
+	syscall((
 			'combineTool.py -M CollectLimits '
 			'A_{}_{}_H_{}_{}/higgsCombine.limit.Asymptotic.mH120.root').format(
 			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
