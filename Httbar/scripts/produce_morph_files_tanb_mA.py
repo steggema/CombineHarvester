@@ -60,6 +60,11 @@ with open(args.input_sushi) as sushi_pkl:
 		print 'LIMITING WIDTH TO 1%'
 		widthA = max(widthA, 1.)
 		widthH = max(widthH, 1.)
+	if mH > 750 and mH < 759:
+		print 'LIMITING m(H) TO 750'
+		mH = 750
+	if mH > 759:
+		raise ValueError('mH beyond accepted limits')
 	
 	syscall('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
 	syscall(

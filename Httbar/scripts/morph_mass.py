@@ -55,8 +55,6 @@ bkgfile = ROOT.TFile(args.bkgfile)
 do_interpolate = False if not args.interpolate or args.interpolate=='False' else True
 
 available = sorted([int(m) for m in args.input_masses.split(',')])
-if args.single:
-	available = [args.single]
 stepsize = int(args.stepsize)
 to_make = [min(available) + (i + 1) *
            stepsize for i in xrange((max(available) - min(available)) / stepsize)]
@@ -66,8 +64,11 @@ if args.fortesting:
 	if args.fortesting in available:
 		available.remove(args.fortesting)
 if args.single:
-	if args.single not in available:
-		raise RuntimeError('I cannot dump a single point which is not available, maybe you meant to use --fortesting?')
+	if args.single in available:
+		available = [args.single]
+		to_make = []
+	else:
+		to_make = [args.single]
 
 print 'Output masses:', to_make
 print 'Available masses: ', available
@@ -387,6 +388,7 @@ for channel in channels:
         # Now collate the hists from the different regions for all masses, including the available
         for test_mass in to_make+available:
             if args.fortesting and test_mass != args.fortesting: continue
+            if args.single and test_mass != args.single: continue
             n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
             #set_trace()
             outfile.cd()
