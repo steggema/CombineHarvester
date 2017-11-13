@@ -25,23 +25,6 @@ excluded = {
 }
 failed = []
 
-def DrawAxisHists(pads, axis_hists, def_pad=None):
-    for i, pad in enumerate(pads):
-        pad.cd()
-        axis_hists[i].Draw('AXIS')
-        axis_hists[i].Draw('AXIGSAME')
-    if def_pad is not None:
-        def_pad.cd()
-
-col_store = []
-def CreateTransparentColor(color, alpha):
-  adapt   = ROOT.gROOT.GetColor(color)
-  new_idx = ROOT.gROOT.GetListOfColors().GetSize() + 1
-  trans = ROOT.TColor(new_idx, adapt.GetRed(), adapt.GetGreen(), adapt.GetBlue(), '', alpha)
-  col_store.append(trans)
-  trans.SetName('userColor%i' % new_idx)
-  return new_idx
-
 def make_graph(points):
 	gr = ROOT.TGraph(len(points))
 	for i, xy in enumerate(points):
@@ -99,72 +82,167 @@ canvas.SaveAs('exclusion.png')
 
 #
 # Get nicer plot
+# Everything is almost completely hardcoded, but 
+# actually easier to handle this way, making visible 
+# all the internals and working from there.
 #
 
-import CombineHarvester.CombineTools.plotting as plot
-plot.ModTDRStyle(width=600, l=0.12)
-ROOT.gStyle.SetFrameLineWidth(2)
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pickle
+plt.rc('text', usetex=True)
+plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+from pdb import set_trace
 
-ROOT.gStyle.SetNdivisions(510, 'XYZ') # probably looks better
-canvas = ROOT.TCanvas('asd', 'asd', 800, 800)
+with open('summary.pkl') as pkl:
+    mapping = pickle.load(pkl)
 
-pads = plot.OnePad()
+excluded = {
+    "exp+1": [],
+    "exp+2": [],
+    "exp-1": [],
+    "exp-2": [],
+    "exp0" : [],
+}
+failed = []
+for point, vals in mapping.iteritems():
+    _, tb = point
+    if not vals: 
+        failed.append(point)
+        continue
+    for key in excluded:
+        if vals[key] < 1/tb: excluded[key].append(point)
 
-plot.Set(pads[0], Tickx=1, Ticky=1)#, Logx=args.logx)
-axis = plot.CreateAxisHists(
-	len(pads), 
-	make_graph(mapping.keys()),
-	True
-	)
-DrawAxisHists(pads, axis, pads[0])
-axis[0].GetXaxis().SetTitle('m_{A} (GeV)')
-axis[0].GetYaxis().SetTitle('tan #beta')
-axis[0].GetXaxis().SetLabelOffset(axis[0].GetXaxis().GetLabelOffset()*2)
-
-pads[0].cd()
-legend = plot.PositionedLegend(0.45, 0.10, 3, 0.015)
-plot.Set(legend, NColumns=2)
-
-legend.SetNColumns(2)
-legend.SetFillStyle(1001)
-legend.SetTextSize(0.15)
-legend.SetTextFont(62)
-
+x_min = min(x for x, _ in mapping.iterkeys())
+x_max = max(x for x, _ in mapping.iterkeys())
+y_min = min(x for _, x in mapping.iterkeys())
+y_max = max(x for _, x in mapping.iterkeys())
 
 best_points = {}
+xs = sorted(list(set([x for x, _ in mapping.keys()])))
 for key in excluded:
-	points = excluded[key]
-	xs = sorted(list(set(i for i, _ in points)))
-	ys = [max(y for x, y in points if x == i) for i in xs]
-	best_points[key] = zip(xs, ys)
+    points = excluded[key]
+    loc_xs = list(set(i for i, _ in points))
+    ys = [max(y for x, y in points if x == i) for i in loc_xs]
+    current_points = dict(zip(loc_xs, ys))
+    for x in xs:
+        if x not in current_points:
+            current_points[x] = 0. #default value
+    best_points[key] = sorted(current_points.items())
 
-expected = make_graph(best_points["exp0"])
-expected.SetLineStyle(2)
-onesigma = make_band(best_points['exp+1'], best_points['exp-1'])
-onesigma.SetLineColor(1)
-onesigma.SetFillColor(ROOT.kGray+2)
-onesigma.SetFillStyle(3315)#1001)
+x = lambda vv: [i for i, _ in vv]
+y = lambda vv: [i for _, i in vv]
 
-twosigma = make_band(best_points['exp+2'], best_points['exp-2'])
-twosigma.SetLineColor(ROOT.kGreen+1)
-twosigma.SetFillColor(ROOT.kGreen+1)
-twosigma.SetFillStyle(3351)#1001)
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
+import matplotlib.patches as patches
 
-twosigma.Draw("4 same")
-onesigma.Draw("4 same")
+fig = plt.figure(figsize=(10, 10), dpi= 80, facecolor='w', edgecolor='k')
+ax = fig.add_subplot(111)
+handles = []
 
-#legend.AddEntry(graphs[-1], '', 'PL')
-#legend.AddEntry(graphs[-1], '', 'PL')
+obs_color = (103./255., 203./255., 123./255., 0.4)
+#version bug, the opacity is not handled in mpatches, therefore we make it lighter
+alpha = obs_color[3]
+patch_color = [i*alpha+1.*(1-alpha) for i in obs_color]
+patch_color[3] = 1.
+handles.append(
+    (mpatches.Patch(facecolor=tuple(patch_color), edgecolor='k'), r'Observed')
+    )
 
-## axis[0].GetXaxis().SetLimits(x_min, x_max)
-## axis[0].GetYaxis().SetLimits(y_min, y_max)
+canter = plt.plot(x(best_points['exp0']), y(best_points['exp0']), 'k--')
+handles.append(
+    (mlines.Line2D([], [], color='k', linestyle='--'), 'Expected')
+    )
+onescol = '#aeaeae'
+twoscol = '#c7c7c7'
+twosig = plt.fill_between(xs, y(best_points['exp+2']), y(best_points['exp-2']), color=twoscol)
+handles.append(
+    (mpatches.Patch(color=twoscol), r'$\pm2\sigma$\, Expected')
+    )
+onesig = plt.fill_between(xs, y(best_points['exp+1']), y(best_points['exp-1']), color=onescol)
+handles.append(
+    (mpatches.Patch(color=onescol), r'$\pm1\sigma$\, Expected')
+    )
 
-box = ROOT.TPave(pads[0].GetLeftMargin(), 0.81, 1-pads[0].GetRightMargin(), 1-pads[0].GetTopMargin(), 1, 'NDC')
-box.Draw()
-legend.Draw()
+#Fake observed, just to check it works
+plt.fill_between(
+	xs, [0]*len(xs), [8, 6, 5, 4.3, 3.5, 3, 2, 1.5], 
+	facecolor=obs_color, edgecolor='k', linewidth=2
+)
 
-plot.DrawCMSLogo(pads[0], 'CMS', 'Preliminary', 11, 0.045, 0.035, 1.2, '', 0.8)
-plot.DrawTitle(pads[0], '19.7 fb^{-1} (8TeV)', 3);
-plot.DrawTitle(pads[0], 'hMSSM scenario', 1)
+plt.xlabel(	
+	r'$m_{A}$\, (GeV)', fontsize=20, 
+	horizontalalignment='right', x=1.0, 
+)
+#by hand y label, in pyplot 1.4 it aligns properly, here not
+plt.ylabel(
+    r'tan$\beta$', fontsize=20, 
+    horizontalalignment='right', 
+    y=0.97 #shifts the label down just right
+)
+plt.xlim((x_min, x_max)) 
+plt.ylim((y_min, y_max)) 
 
-canvas.SaveAs('exclusion_summary.png')
+#rectangle around the legend and the CMS label
+ax.add_patch(
+    patches.Rectangle(
+        (x_min, y_max),   # (x,y)
+        (x_max-x_min),          # width
+        1.3,          # height
+        clip_on=False,
+        facecolor='w'
+    )
+)
+
+#legend
+from matplotlib.font_manager import FontProperties
+fontP = FontProperties()
+fontP.set_size('x-large')
+legend_x = 0.45
+plt.legend(
+	x(handles), y(handles),
+	bbox_to_anchor=(legend_x, 1., .55, .102), loc=3,
+	ncol=2, mode="expand", borderaxespad=0.,
+	fontsize='x-large',
+	frameon=False,
+)
+#legend title (again, due to version)
+txt = plt.text(
+    x_min+(x_max-x_min)*(legend_x+0.01), y_max+(y_max-y_min)*.102,
+		r'\textbf{95\% CL Excluded}:',
+    fontsize='x-large',
+    horizontalalignment='left'
+    )
+
+#CMS blurb
+plt.text(
+    x_min+(x_max-x_min)*0.05, y_max+.2,
+    r'''\textbf{CMS}
+\textit{Preliminary}''',
+    fontsize=32
+    )
+
+#lumi stuff
+txt = plt.text(
+    x_max-(x_max-x_min)*0.01, y_max+1.45,
+    r'35.9 fb$^{-1}$ (13 TeV)',
+    fontsize='x-large',
+    horizontalalignment='right'
+    )
+
+ax.tick_params(axis='both', labelsize='xx-large', which='both')
+
+#plt.show()
+plt.savefig(
+	'exclusion.pdf', 
+	bbox_extra_artists=(txt,), #ensure that the upper text is drawn
+	bbox_inches='tight'
+)
+plt.savefig(
+	'exclusion.png', 
+	bbox_extra_artists=(txt,), #ensure that the upper text is drawn
+	bbox_inches='tight'
+)
+
