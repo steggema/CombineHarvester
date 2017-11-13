@@ -17,7 +17,7 @@ parser.add_argument('--algo', default='NonLinearPosFractions',
                     help="Choose morphing algo")
 parser.add_argument('--input_masses', default='400,500,600,750',
                     help='comma separated list of masses')
-parser.add_argument('--widths', default='2p5,5,10,25,50',
+parser.add_argument('--widths', default='0p1,1,2p5,5,10,25,50',
                     help='comma separated list of widths')
 parser.add_argument('--stepsize', default='50')
 parser.add_argument('--interpolate', default='True')
@@ -55,8 +55,6 @@ bkgfile = ROOT.TFile(args.bkgfile)
 do_interpolate = False if not args.interpolate or args.interpolate=='False' else True
 
 available = sorted([int(m) for m in args.input_masses.split(',')])
-if args.single:
-	available = [args.single]
 stepsize = int(args.stepsize)
 to_make = [min(available) + (i + 1) *
            stepsize for i in xrange((max(available) - min(available)) / stepsize)]
@@ -66,8 +64,11 @@ if args.fortesting:
 	if args.fortesting in available:
 		available.remove(args.fortesting)
 if args.single:
-	if args.single not in available:
-		raise RuntimeError('I cannot dump a single point which is not available, maybe you meant to use --fortesting?')
+	if args.single in available:
+		available = [args.single]
+		to_make = []
+	else:
+		to_make = [args.single]
 
 print 'Output masses:', to_make
 print 'Available masses: ', available
@@ -92,15 +93,15 @@ def graph2arr(graph):
 	return array(xs), array(ys)
 
 def graph_interpolation(width, file_int, parity, name_format, interpolation):
-	with_value = name2val(width)
-	above = min(i for i in widths_vals if i > with_value)
-	below = max(i for i in widths_vals if i < with_value)
+	width_value = name2val(width)
+	above = min(i for i in widths_vals if i > width_value)
+	below = max(i for i in widths_vals if i < width_value)
 	g_abv = file_int.Get(name_format.format(parity, val2name(above).replace('pc', '')))
 	g_blw = file_int.Get(name_format.format(parity, val2name(below).replace('pc', '')))
 
 	xs, y_above = graph2arr(g_abv)
 	_, y_below = graph2arr(g_blw)
-	factor = interpolation(with_value, above, below)
+	factor = interpolation(width_value, above, below)
 	y_new = y_below*(1-factor)+y_above*factor
 	ret = g_blw.Clone(name_format.format(parity,width))
 	for i, xy in enumerate(zip(xs, y_new)):
@@ -195,28 +196,40 @@ for channel in channels:
         g_int = None
         g_int_neg_frac = None
         if pattern == 'pos-sgn':
-            g_int = file_int.Get('{}_res_semilep_w{}_toterr'.format(args.parity, width))
+            g_int = file_int.Get(
+							'pp_{}0_RES_SL_w{}_toterr'.format(
+								args.parity.lower(), width.replace('pc','')
+								)
+							)
             if not g_int:
             	print "interpolating cross sections"
             	#set_trace()
             	g_int = graph_interpolation(
-            		width, file_int, args.parity, 
-            		'{}_res_semilep_w{}_toterr', hyperbolic
+            		width, file_int, args.parity.lower(), 
+            		'pp_{}0_RES_SL_w{}_toterr', hyperbolic
             		)
 				
         if pattern in ['pos-int', 'neg-int']:
-            g_int = file_int_int.Get('{}_int_semilep_w{}_SEweight'.format(args.parity, width))
-            g_int_neg_frac = file_int_int.Get('{}_int_semilep_w{}_NegEvts_Frac'.format(args.parity, width))
+            g_int = file_int_int.Get(
+							'pp_{}0_INT_SL_w{}_SEweight'.format(
+								args.parity.lower(), width.replace('pc','')
+								)
+							)
+            g_int_neg_frac = file_int_int.Get(
+							'pp_{}0_INT_SL_w{}_NegEvts_Frac'.format(
+								args.parity.lower(), width.replace('pc','')
+								)
+							)
             if not g_int:
             	print "interpolating cross sections"
             	#set_trace()
             	g_int = graph_interpolation(
-            		width, file_int_int, args.parity, 
-            		'{}_int_semilep_w{}_SEweight', linear
+            		width, file_int_int, args.parity.lower(), 
+            		'pp_{}0_INT_SL_w{}_SEweight', linear
             		)
             	g_int_neg_frac = graph_interpolation(
-            		width, file_int_int, args.parity,
-            		'{}_int_semilep_w{}_NegEvts_Frac', linear
+            		width, file_int_int, args.parity.lower(),
+            		'pp_{}0_INT_SL_w{}_NegEvts_Frac', linear
             		)
             # print pattern
             # for m in [400., 450., 500., 600., 700.]:
@@ -375,6 +388,7 @@ for channel in channels:
         # Now collate the hists from the different regions for all masses, including the available
         for test_mass in to_make+available:
             if args.fortesting and test_mass != args.fortesting: continue
+            if args.single and test_mass != args.single: continue
             n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
             #set_trace()
             outfile.cd()

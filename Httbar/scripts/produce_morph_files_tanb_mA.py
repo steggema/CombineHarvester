@@ -9,6 +9,13 @@ import pickle
 from argparse import ArgumentParser
 import shutil
 from glob import glob
+from pdb import set_trace
+
+def syscall(cmd):
+	print 'Executing: %s' % cmd
+	retval = os.system(cmd)
+	if retval != 0:
+		raise RuntimeError('Command failed!')
 
 parser = ArgumentParser()
 parser.add_argument('jobid')
@@ -49,38 +56,49 @@ with open(args.input_sushi) as sushi_pkl:
 	print '  widthA =', widthA
 	print '  widthH =', widthH
 	print '  mH =', mH
+	## if widthH < 1. or widthA < 1.:
+	## 	print 'LIMITING WIDTH TO 1%'
+	## 	widthA = max(widthA, 1.)
+	## 	widthH = max(widthH, 1.)
+	if mH > 750 and mH < 759:
+		print 'LIMITING m(H) TO 750'
+		mH = 750
+	if mH > 759:
+		raise ValueError('mH beyond accepted limits')
 	
-	os.system('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
-	os.system(
+	syscall('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
+	syscall(
 		'hadd -f templates_ALL_POINT.root TESTME.root '
 		'%s/src/CombineHarvester/Httbar/data/templates_l?_bkg_2017Aug04.root' % os.environ['CMSSW_BASE']
 		)
-	os.system((
+	print '\n\ncreating workspace\n\n'
+	syscall((
 			'setup_common.py POINT --indir=./ --limitdir=./'
 			' --masses="A:{},H:{}" --widths="A:{},H:{}"').format(
 			mA, mH, val2name(widthA), val2name(widthH)
 			))
-	os.system((
+	syscall((
 			'combineTool.py -M T2W -i A_{}_{}_H_{}_{} -o workspace.root -P CombineHarvester'
 			'.CombineTools.InterferenceModel:interferenceModel').format(
 			val2name(widthA), mA, val2name(widthH), mH
 			))
-	os.system((
+	print '\n\nRunning LIMIT\n\n'
+	syscall((
 			'combineTool.py -M Asymptotic -d A_{}_{}_H_{}_{}/workspace.root --there -n'
 			' .limit --minimizerTolerance=0.0001 --minimizerStrategy=2').format(
 			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
 			))
-	os.system((
+	syscall((
 			'combineTool.py -M CollectLimits '
 			'A_{}_{}_H_{}_{}/higgsCombine.limit.Asymptotic.mH120.root').format(
 			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
 			))
-shutil.move('limits.json', 'mA%d_tanb%.2f.json' % (mA, tanb))
+shutil.move('limits.json', 'mA%d_tanb%s.json' % (mA, tanb))
 shutil.rmtree(
         'A_{}_{}_H_{}_{}'.format(
                 val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
                 )
         )
 for fname in glob('*.root'):
-        shutil.rmtree(fname)
+	os.remove(fname)
 

@@ -27,6 +27,7 @@ if args.kfactors:
 	kfactors = json.loads(open(args.kfactors).read())
 
 mapping = {
+  '0p1pc' : .1,
   '1pc' : 1.0,
 	'2p5pc' : 2.5,
 	'5pc'   : 5.0,
@@ -42,8 +43,8 @@ checks = {
 }
 
 xsections = ROOT.TFile(os.path.expandvars(
-    '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root')),
-neg_ratio = ROOT.TFile(path.expandvars(
+    '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_xsecs_vs_mass.root'))
+neg_ratio = ROOT.TFile(os.path.expandvars(
     '$CMSSW_BASE/src/CombineHarvester/Httbar/data/Spin0_SEweight_and_NegEvtsFrac_vs_mass.root'))
 		
 
@@ -52,7 +53,9 @@ val2name = lambda x: "%s%s" % (str(x).replace('.','p').replace('p0',''),"pc")
 if args.single:
 	widths = [args.single]
 new_points = dictionary = dict((i, val2name(i)) for i in widths)
+tomove = []
 for key in mapping.values():
+ if key in new_points: tomove.append(key)
  new_points.pop(key,None)
 if args.forchecks:
 	new_points = checks
@@ -135,8 +138,8 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	   shapes_map[_type][k][w].Scale(kfactors[key])
 	
 	#extrapolation (if needed)
-	if min(new_points.keys()) < 2.5: #yes, hardcoded
-		print 'Extrapolating to 1% width'
+	print 'Extrapolating to 1% width'
+	for width_value, width_name in [(1., '1'), (0.1, '0p1')]:
 		for val in shapes_map.itervalues():
 			for info, vval in val.iteritems():
 				parity_and_sign, proc, mass = info
@@ -145,32 +148,43 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 				sign = parity_and_sign[-3:]
 				proc = proc.replace('sgn', 'res')
 				xsec_2p5 = xsections.Get(
-					'{}_{}_semilep_w2p5_toterr'.format(
-						parity, proc
-						)
-					).Eval(mass)
+					'pp_{}0_RES_SL_w2p5_toterr'.format(parity.lower())
+					).Eval(mass) \
+					if proc == 'res' else \
+					neg_ratio.Get(
+						'pp_{}0_INT_SL_w2p5_SEweight'.format(parity.lower())
+						).Eval(mass)
+		
 				xsec_1 = xsections.Get(
-          '{}_{}_semilep_w1_toterr'.format(
-            parity, proc
-            )
-          ).Eval(mass)
+					'pp_{}0_RES_SL_w{}_toterr'.format(parity.lower(), width_name)
+					).Eval(mass) \
+					if proc == 'res' else \
+					neg_ratio.Get(
+						'pp_{}0_INT_SL_w{}_SEweight'.format(parity.lower(), width_name)
+						).Eval(mass)
+				
 				if proc == 'int':
 					frac_2p5 = neg_ratio.Get(
-						'{}_int_semilep_w2p5_NegEvts_Frac'.format(parity)
+						'pp_{}0_INT_SL_w2p5_NegEvts_Frac'.format(parity.lower())
 						).Eval(mass)
 					frac_1 = neg_ratio.Get(
-						'{}_int_semilep_w1_NegEvts_Frac'.format(parity)
+						'pp_{}0_INT_SL_w{}_NegEvts_Frac'.format(parity.lower(), width_name)
 						).Eval(mass)
 					xsec_2p5 *= frac_2p5 if sign == 'neg' else (1-frac_2p5)
 					xsec_1 *= frac_1 if sign == 'neg' else (1-frac_1)
 					
-				vval[1.] = vval[2.5].Clone(vval[2.5].GetName().replace('2p5', '1'))
-				vval[1.].Scale(xsec_1/xsec_2p5)
+				vval[width_value] = vval[2.5].Clone(
+					vval[2.5].GetName().replace('2p5', width_name)
+					)
+				vval[width_value].Scale(xsec_1/xsec_2p5)
 	
 	#compute new histograms
 	for _type in shapes_map:
 	 for key in shapes_map[_type]:
-	  for width in new_points:
+	  if args.nocopy:
+	   for point in tomove:
+	    shapes_map[_type][key][point].Write()
+	  for width in new_points.keys():
 	   b, a = interpolation[width]
 	   if hyperbolic[_type]:
 	    factor = (1./width-1./b)/(1./a-1./b)
