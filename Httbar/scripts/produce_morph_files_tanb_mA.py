@@ -56,10 +56,10 @@ with open(args.input_sushi) as sushi_pkl:
 	print '  widthA =', widthA
 	print '  widthH =', widthH
 	print '  mH =', mH
-	if widthH < 1. or widthA < 1.:
-		print 'LIMITING WIDTH TO 1%'
-		widthA = max(widthA, 1.)
-		widthH = max(widthH, 1.)
+	## if widthH < 1. or widthA < 1.:
+	## 	print 'LIMITING WIDTH TO 1%'
+	## 	widthA = max(widthA, 1.)
+	## 	widthH = max(widthH, 1.)
 	if mH > 750 and mH < 759:
 		print 'LIMITING m(H) TO 750'
 		mH = 750

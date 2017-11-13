@@ -4,6 +4,7 @@ import os
 import pickle
 from argparse import ArgumentParser
 import json
+from pdb import set_trace
 
 parser = ArgumentParser()
 parser.add_argument('input_sushi')
@@ -29,7 +30,7 @@ for entry in mapping.itervalues():
 	jname = '%s/mA%d_tanb%.1f.json' % (args.submission_dir, mA, entry['tan(beta)'])
 	if not os.path.isfile(jname):
 		fails.append('%d %.1f' % (mA, entry['tan(beta)']))
-		print 'Point (%d, %.2f) not computed successfully!' % (mA, entry['tan(beta)'])
+ 		print 'Point (%d, %.2f) not computed successfully!' % (mA, entry['tan(beta)'])
 		print 'Point Info: '
 		print 'mA: %d width: %.2f%%' % (mA, float(entry['A_width'])/mA*100.)
 		print 'mH: %.0f width: %.2f%%' % (entry['m_H'], float(entry['H_width'])/entry['m_H']*100.)
@@ -37,6 +38,11 @@ for entry in mapping.itervalues():
 	else:
 		npass += 1
 		jmap = json.loads(open(jname).read())
+		if len(jmap['120.0']) != 6:
+			print 'Point (%d, %.2f) ran but the result is wrong! (not the full set of infos were dumped)' % (mA, entry['tan(beta)'])
+			print 'Point Info: '
+			print 'mA: %d width: %.2f%%' % (mA, float(entry['A_width'])/mA*100.)
+			print 'mH: %.0f width: %.2f%%' % (entry['m_H'], float(entry['H_width'])/entry['m_H']*100.)
 		summary[(mA, entry['tan(beta)'])] = jmap['120.0']
 		
 pickle.dump(
