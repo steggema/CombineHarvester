@@ -23,6 +23,7 @@ parser.add_argument('mA', type=int)
 parser.add_argument('tanb')
 parser.add_argument('input_sushi')
 parser.add_argument('--blind', action='store_true')
+parser.add_argument('--norm', action='store_true')
 # parser.add_argument('inputs_bkg', help='comma separated list of bkg input files. Same order required as for signal files')
 # parser.add_argument('outfile')
 args = parser.parse_args()
@@ -94,11 +95,12 @@ with open(args.input_sushi) as sushi_pkl:
 			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
 			))
 shutil.move('limits.json', 'mA%d_tanb%s.json' % (mA, tanb))
-shutil.rmtree(
-        'A_{}_{}_H_{}_{}'.format(
-                val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
-                )
-        )
-for fname in glob('*.root'):
-	os.remove(fname)
+if not args.norm:
+	shutil.rmtree(
+		'A_{}_{}_H_{}_{}'.format(
+			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
+			)
+		)
+	for fname in glob('*.root'):
+		os.remove(fname)
 
