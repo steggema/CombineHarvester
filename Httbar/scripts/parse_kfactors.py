@@ -11,7 +11,6 @@ parser.add_argument('output')
 args = parser.parse_args()
 
 infile = open(args.inputfile).read().replace('\r', '')
-set_trace()
 blocks = infile.split('\n\n')
 #remove header
 blocks[0] = '\n'.join(blocks[0].split('\n')[3:])
