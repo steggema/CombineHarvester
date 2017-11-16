@@ -86,19 +86,19 @@ with open(args.input_sushi) as sushi_pkl:
 	print '\n\nRunning LIMIT\n\n'
 	syscall((
 			'combineTool.py -M Asymptotic -d A_{}_{}_H_{}_{}/workspace.root --there -n'
-			' .limit --minimizerTolerance=0.0001 --minimizerStrategy=2').format(
+			' .limit --minimizerTolerance=0.0001 --minimizerStrategy=2 {}').format(
 			val2name(widthA), mA, val2name(widthH), mH, '' if args.noblind else '--run blind -t -1'
 			))
 	syscall((
 			'combineTool.py -M CollectLimits '
 			'A_{}_{}_H_{}_{}/higgsCombine.limit.Asymptotic.mH120.root').format(
-			val2name(widthA), mA, val2name(widthH), mH, '' if args.noblind else '--run blind'
+			val2name(widthA), mA, val2name(widthH), mH
 			))
 shutil.move('limits.json', 'mA%d_tanb%s.json' % (mA, tanb))
 if not args.norm:
 	shutil.rmtree(
 		'A_{}_{}_H_{}_{}'.format(
-			val2name(widthA), mA, val2name(widthH), mH, '--run blind' if args.blind else ''
+			val2name(widthA), mA, val2name(widthH), mH
 			)
 		)
 	for fname in glob('*.root'):

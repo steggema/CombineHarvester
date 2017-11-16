@@ -45,7 +45,7 @@ def make_band(p1, p2, default=-2):
 
 for point, vals in mapping.iteritems():
 	_, tb = point
-	if not vals: 
+	if not vals or (set(excluded.keys()) - set(vals.keys())) : 
 		failed.append(point)
 		continue
 	for key in excluded:
@@ -78,7 +78,7 @@ g_excluded.GetYaxis().SetRangeUser(y_min, y_max)
 g_excluded.GetXaxis().SetTitle('m(A)')
 g_excluded.GetYaxis().SetTitle('tan #beta')
 
-canvas.SaveAs('exclusion.png')
+canvas.SaveAs('summary.png')
 
 #
 # Get nicer plot
@@ -94,25 +94,6 @@ import pickle
 plt.rc('text', usetex=True)
 plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 from pdb import set_trace
-
-with open('summary.pkl') as pkl:
-    mapping = pickle.load(pkl)
-
-excluded = {
-    "exp+1": [],
-    "exp+2": [],
-    "exp-1": [],
-    "exp-2": [],
-    "exp0" : [],
-}
-failed = []
-for point, vals in mapping.iteritems():
-    _, tb = point
-    if not vals: 
-        failed.append(point)
-        continue
-    for key in excluded:
-        if vals[key] < 1/tb: excluded[key].append(point)
 
 x_min = min(x for x, _ in mapping.iterkeys())
 x_max = max(x for x, _ in mapping.iterkeys())
@@ -167,10 +148,10 @@ handles.append(
     )
 
 #Fake observed, just to check it works
-plt.fill_between(
-	xs, [0]*len(xs), [8, 6, 5, 4.3, 3.5, 3, 2, 1.5], 
-	facecolor=obs_color, edgecolor='k', linewidth=2
-)
+## plt.fill_between(
+## 	xs, [0]*len(xs), [8, 6, 5, 4.3, 3.5, 3, 2, 1.5], 
+## 	facecolor=obs_color, edgecolor='k', linewidth=1
+## )
 
 plt.xlabel(	
 	r'$m_{A}$\, (GeV)', fontsize=20, 
@@ -236,12 +217,12 @@ ax.tick_params(axis='both', labelsize='xx-large', which='both')
 
 #plt.show()
 plt.savefig(
-	'exclusion.pdf', 
+	'hmssm_exclusion.pdf',
 	bbox_extra_artists=(txt,), #ensure that the upper text is drawn
 	bbox_inches='tight'
 )
 plt.savefig(
-	'exclusion.png', 
+	'hmssm_exclusion.png',
 	bbox_extra_artists=(txt,), #ensure that the upper text is drawn
 	bbox_inches='tight'
 )

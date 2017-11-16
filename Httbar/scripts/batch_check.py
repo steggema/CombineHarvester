@@ -25,6 +25,7 @@ for block in blocks[1:]:
 summary = {}
 npass = 0
 fails = []
+mis_runs = 0
 for entry in mapping.itervalues():
 	mA = int(entry['m_A'])
 	jname = '%s/mA%d_tanb%.1f.json' % (args.submission_dir, mA, entry['tan(beta)'])
@@ -36,15 +37,25 @@ for entry in mapping.itervalues():
 		print 'mH: %.0f width: %.2f%%' % (entry['m_H'], float(entry['H_width'])/entry['m_H']*100.)
 		summary[(mA, entry['tan(beta)'])] = {}
 	else:
-		npass += 1
 		jmap = json.loads(open(jname).read())
-		if len(jmap['120.0']) != 6:
+		if len(jmap['120.0']) < 5:
+			mis_runs += 1
+			fails.append('%d %.1f' % (mA, entry['tan(beta)']))
 			print 'Point (%d, %.2f) ran but the result is wrong! (not the full set of infos were dumped)' % (mA, entry['tan(beta)'])
 			print 'Point Info: '
 			print 'mA: %d width: %.2f%%' % (mA, float(entry['A_width'])/mA*100.)
 			print 'mH: %.0f width: %.2f%%' % (entry['m_H'], float(entry['H_width'])/entry['m_H']*100.)
+			continue
+		npass += 1
 		summary[(mA, entry['tan(beta)'])] = jmap['120.0']
 		
+
+print '''Run Summary:
+  Successful jobs: %d
+  Failed jobs: %d
+  Out of which jobs not properly finished: %d
+''' % (npass, len(fails), mis_runs)
+
 pickle.dump(
 	summary, 
 	open('summary.pkl', 'wb')
