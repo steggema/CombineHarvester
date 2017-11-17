@@ -26,17 +26,15 @@ common_theory_uncs = [
 	LnNUnc(['tWChannel'], 'CMS_httbar_tWChannelNorm_13TeV', 1.15),
 	LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.5),
 	LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5),
+	LnNUnc(['TTV'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
 ]
 
 ll_theory_uncs = [
-	LnNUnc(['TTW'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
-	LnNUnc(['TTZ'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
 	]
 
 lj_theory_uncs = [
 	LnNUnc(['tChannel'], 'CMS_httbar_tChannelNorm_13TeV', 1.20),
 	LnNUnc(['sChannel'], 'CMS_httbar_sChannelNorm_13TeV', 1.20),
-	LnNUnc(['TTV'], 'CMS_httbar_TTVNorm_13TeV', 1.2),
 	LnNUnc(['QCDmujets'], 'CMS_httbar_QCDmujetsNorm', 2.0),
 	LnNUnc(['QCDejets'], 'CMS_httbar_QCDejetsNorm', 2.0),
 	]
@@ -70,18 +68,21 @@ common_shape_uncs = [
 	'CMS_scale_j_13TeV_PileUpPtBB',
 	'CMS_scale_j_13TeV_PileUpPtEC1',
 	#JER
-	'CMS_res_j_13TeV'
+	'CMS_res_j_13TeV',
+	#MET
+	'CMS_METunclustered_13TeV'
 ]
 lj_by_lepton_uncs = {
 	'mu' : ['CMS_eff_trigger_m', 'CMS_eff_m'],
 	'el' : ['CMS_eff_trigger_e', 'CMS_eff_e']
 }
-lj_shape_uncs = ['CMS_METunclustered_13TeV']
+lj_shape_uncs = []
 ll_shape_uncs = ['CMS_eff_trigger_l', 'CMS_eff_e', 'CMS_eff_m']
 
 #tt shapes
 common_tt_shape_uncs = [
-		'pdf', 'QCDscaleFSR_TT', 'Hdamp_TT', 
+		'CMS_httbar_PDF_alphaS', 'CMS_httbar_PDF_1', 'CMS_httbar_PDF_2', 
+		'QCDscaleFSR_TT', 'Hdamp_TT', 
 		'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT',
 		'CMS_TopPt1_TT', 'CMS_TopPt2_TT'
 		]
