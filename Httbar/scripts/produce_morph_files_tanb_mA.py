@@ -24,6 +24,7 @@ parser.add_argument('tanb')
 parser.add_argument('input_sushi')
 parser.add_argument('--noblind', action='store_true')
 parser.add_argument('--norm', action='store_true')
+parser.add_argument('--force', help='force the values for debugging')
 # parser.add_argument('inputs_bkg', help='comma separated list of bkg input files. Same order required as for signal files')
 # parser.add_argument('outfile')
 args = parser.parse_args()
@@ -52,7 +53,17 @@ with open(args.input_sushi) as sushi_pkl:
 	# Widths are relative and in per cent
 	widthA = round(float(values['A_width'])/mA*100., 1)
 	widthH = round(float(values['H_width'])/mH*100., 1)
-	
+	if args.force:
+		print 'forcing output'
+		for val in args.force.split(','):
+			parity, mass, width = tuple(val.split(':'))
+			if parity == 'A':
+				mA = int(mass)
+				widthA = float(width)
+			elif parity == 'H':
+				mH = int(mass)
+				widthH = float(width)
+
 	print 'For mA =', mA, 'tan(beta) =', tanb, 'obtain:'
 	print '  widthA =', widthA
 	print '  widthH =', widthH
@@ -70,7 +81,9 @@ with open(args.input_sushi) as sushi_pkl:
 	syscall('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
 	syscall(
 		'hadd -f templates_ALL_POINT.root TESTME.root '
-		'%s/src/CombineHarvester/Httbar/data/templates_l?_bkg_2017Aug04.root' % os.environ['CMSSW_BASE']
+		'%s/src/CombineHarvester/Httbar/data/templates_l?_bkg_%s.root' % (
+			os.environ['CMSSW_BASE'], args.jobid
+			)
 		)
 	print '\n\ncreating workspace\n\n'
 	syscall((

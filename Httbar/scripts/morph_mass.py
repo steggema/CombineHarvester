@@ -24,6 +24,7 @@ parser.add_argument('--interpolate', default='True')
 parser.add_argument('--fortesting', type=int, default=0)
 parser.add_argument('--kfactor', type=float, default=1.)
 parser.add_argument('--nosystematics', action='store_true')
+parser.add_argument('-q', action='store_true', help='quiet')
 parser.add_argument('--single', type=int, default=0)
 parser.add_argument('--out')
 
@@ -41,7 +42,7 @@ ROOT.SetMemoryPolicy( ROOT.kMemoryStrict )
 # ALL THE DANGEROUS CONSTANTS IN ONE PLACE
 isLJ = ('_lj_' in args.inputfile)
 OUTPUT_BINNING_LJ = [300.0, 340.0, 360.0, 380.0, 400.0, 420.0, 440.0, 460.0, 480.0, 500.0, 520.0, 540.0, 560.0, 580.0, 600.0, 625.0, 650.0, 675.0, 700.0, 730.0, 760.0, 800.0, 850.0, 900.0, 1000.0, 1200.0]
-OUTPUT_BINNING_LL = [325., 355., 385., 415., 445., 475., 505., 535., 565., 595., 625., 655., 685., 715., 745., 775., 805., 837., 872., 911., 957., 1014., 1094., 1210., 1400.]
+OUTPUT_BINNING_LL = [325., 355., 385., 415., 445., 475., 505., 535., 565., 595., 625., 655., 685., 715., 745., 775., 805., 837., 872., 911., 957., 1014., 1094., 1200.]
 
 OUTPUT_BINNING = OUTPUT_BINNING_LJ if isLJ else OUTPUT_BINNING_LL
 print 'Using mass binning: ', OUTPUT_BINNING
@@ -243,7 +244,7 @@ for channel in channels:
         mass_scales = {}
         # First get the histograms for all masses
 				
-        print '\n Processing:', h_name
+        if not args.q: print '\n Processing:', h_name
 				
 				
         for mass in available:
@@ -423,6 +424,6 @@ for channel in channels:
                 item.Delete()
                 del item
         #set_trace() #d_hists_region
-        print 'Time elapsed:', timer() - start
-        print 'Peak mem used:', resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if not args.q: print 'Time elapsed:', timer() - start
+        if not args.q: print 'Peak mem used:', resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     outfile.Write()
