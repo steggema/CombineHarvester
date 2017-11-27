@@ -31,18 +31,6 @@ def make_graph(points):
 		gr.SetPoint(i, xy[0], xy[1])
 	return gr
 
-def make_band(p1, p2, default=-2):
-	p1d = dict(p1)
-	p2d = dict(p2)
-	xs = sorted(set(i for i, _ in p1+p2))
-	gr = ROOT.TGraphErrors(len(xs))
-	for i, x in enumerate(xs):
-		y = abs(p1d.get(x, default) + p2d.get(x, default))/2.
-		err = abs(p1d.get(x, default) - p2d.get(x, default))
-		gr.SetPoint(i, x, y)
-		gr.SetPointError(i, 0, err)
-	return gr
-
 for point, vals in mapping.iteritems():
 	_, tb = point
 	if not vals or (set(excluded.keys()) - set(vals.keys())) : 
@@ -96,7 +84,7 @@ plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 from pdb import set_trace
 
 x_min = min(x for x, _ in mapping.iterkeys())
-x_max = max(x for x, _ in mapping.iterkeys())
+x_max = 700 #max(x for x, _ in mapping.iterkeys())
 y_min = min(x for _, x in mapping.iterkeys())
 y_max = max(x for _, x in mapping.iterkeys())
 
@@ -166,12 +154,13 @@ plt.ylabel(
 plt.xlim((x_min, x_max)) 
 plt.ylim((y_min, y_max)) 
 
+delta_y = y_max - y_min
 #rectangle around the legend and the CMS label
 ax.add_patch(
     patches.Rectangle(
         (x_min, y_max),   # (x,y)
         (x_max-x_min),          # width
-        1.3,          # height
+        1.35*delta_y/10,          # height
         clip_on=False,
         facecolor='w'
     )
@@ -191,7 +180,7 @@ plt.legend(
 )
 #legend title (again, due to version)
 txt = plt.text(
-    x_min+(x_max-x_min)*(legend_x+0.01), y_max+(y_max-y_min)*.102,
+    x_min+(x_max-x_min)*(legend_x+0.01), y_max+delta_y*.102,
 		r'\textbf{95\% CL Excluded}:',
     fontsize='x-large',
     horizontalalignment='left'
@@ -199,7 +188,7 @@ txt = plt.text(
 
 #CMS blurb
 plt.text(
-    x_min+(x_max-x_min)*0.05, y_max+.2,
+    x_min+(x_max-x_min)*0.05, y_max+.2*delta_y/10,
     r'''\textbf{CMS}
 \textit{Preliminary}''',
     fontsize=32
@@ -207,7 +196,7 @@ plt.text(
 
 #lumi stuff
 txt = plt.text(
-    x_max-(x_max-x_min)*0.01, y_max+1.45,
+    x_max-(x_max-x_min)*0.01, y_max+1.5*delta_y/10,
     r'35.9 fb$^{-1}$ (13 TeV)',
     fontsize='x-large',
     horizontalalignment='right'
