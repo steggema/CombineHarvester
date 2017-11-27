@@ -9,7 +9,7 @@ parser = ArgumentParser()
 parser.add_argument('jobid')
 parser.add_argument('input_sushi')
 parser.add_argument('outdir')
-parser.add_argument('--blind', action='store_true')
+parser.add_argument('--noblind', action='store_true')
 args = parser.parse_args()
 
 if not os.path.isdir(args.outdir):
@@ -41,5 +41,5 @@ Queue
 				ma=int(ma),
 				tanb=round(tanb, 2),
 				sushi=os.path.realpath(args.input_sushi),
-				blind= '--blind' if args.blind else ''
+				blind= '--noblind' if args.noblind else ''
 				))

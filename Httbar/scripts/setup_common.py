@@ -118,7 +118,7 @@ def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb', 
 		'bkg_e':['QCDejets']
 	}
 	procs_ll = {
-	    'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTW', 'TTZ'],
+	    'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTV'],
 	}
 
 	if not any('A:' in x or 'H:' in x for x in widths):
@@ -373,47 +373,49 @@ if __name__ == '__main__':
 	print masses, widths, modes
     
 	special = False
+	#set_trace()
 	if any('A:' in x or 'H:' in x for x in widths):
 		widths = [widths]
 		special = True
+		modes = [['A', 'H']]
+	else:
+		modes = [[i] for i in modes]
 
-
-	# for mode in modes:
-	for width in widths:
-		cb = ch.CombineHarvester()
-		cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
-
-		if args.channels != 'll':
-			procs = createProcessNames(width if special else [width], modes, 'lj', masses)
-			prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj if args.channels == 'lj' else in_file, args.channels, [''] if special else masses, addBBB=addBBB)
-
-		if args.channels in ['ll', 'cmb']:
-			procs = createProcessNames(width if special else [width], modes, 'll', masses)
-			prepareDiLepton(cb, category_to_id, procs, in_file_ll if args.channels == 'll' else in_file, [''] if special else masses, addBBB=addBBB)
-
-		print '>> Extracting histograms from input root files...'
-		cb.cp().backgrounds().ExtractShapes(
-			in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC'
-			)
-		cb.cp().signals().ExtractShapes(
-			in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC'
-			)
-
-		## if addBBB:
-		## 	addBinByBin(cb)
+	for mode in modes:
+		for width in widths:
+			cb = ch.CombineHarvester()
+			cb.AddObservations(['*'], ['httbar'], ['13TeV'], [''], categories)
 		
-		if doMorph:
-			f_masses = [float(m) for m in masses]
-			performMorphing(cb, procs, min(f_masses), max(f_masses))
-		mode_name = '_'.join(modes)
-		width_name = width
-		if special:
-			mode_name = 'A_'
-			mode_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'A' in a])
-			width_name = 'H_'
-			width_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'H' in a])
-
-		writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent,limitdir = args.limitdir)
+			if args.channels != 'll':
+				procs = createProcessNames(width if special else [width], mode, 'lj', masses)
+				prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj if args.channels == 'lj' else in_file, args.channels, [''] if special else masses, addBBB=addBBB)
+		
+			if args.channels in ['ll', 'cmb']:
+				procs = createProcessNames(width if special else [width], mode, 'll', masses)
+				prepareDiLepton(cb, category_to_id, procs, in_file_ll if args.channels == 'll' else in_file, [''] if special else masses, addBBB=addBBB)
+		
+			print '>> Extracting histograms from input root files...'
+			cb.cp().backgrounds().ExtractShapes(
+				in_file, '$BIN/$PROCESS', '$BIN/$PROCESS_$SYSTEMATIC'
+				)
+			cb.cp().signals().ExtractShapes(
+				in_file, '$BIN/$PROCESS$MASS', '$BIN/$PROCESS$MASS_$SYSTEMATIC'
+				)
+		
+			## if addBBB:
+			## 	addBinByBin(cb)
+			
+			if doMorph:
+				f_masses = [float(m) for m in masses]
+				performMorphing(cb, procs, min(f_masses), max(f_masses))
+			mode_name = '_'.join(mode)
+			width_name = width
+			if special:
+				mode_name = 'A_'
+				mode_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'A' in a])
+				width_name = 'H_'
+				width_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'H' in a])
+			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent,limitdir = args.limitdir)
 
 	print '>> Done!'
 

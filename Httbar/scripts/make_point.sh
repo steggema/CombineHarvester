@@ -24,7 +24,7 @@ for setting in $settings1 $settings2; do
 						--filter='gg'"${options[0]}"'*'	--nocopy --out $wmorph --kfactors=$CMSSW_BASE/src/CombineHarvester/Httbar/data/kfactors.json
 				mmorph=temp_$chan'_massmorph'.$setting.root
 				morph_mass.py $wmorph $CMSSW_BASE/src/CombineHarvester/Httbar/data/templates_$chan'_bkg_'$jobid.root \
-						"${options[0]}" --algo NonLinearPosFractions --single "${options[1]}" --out $mmorph
+						"${options[0]}" --algo NonLinearPosFractions --single "${options[1]}" --out $mmorph -q
 				toadd=$toadd' '$mmorph
 				torm=$wmorph' '$torm
 		done
