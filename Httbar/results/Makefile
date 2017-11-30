@@ -79,10 +79,13 @@ $(limitdir)/.breakdownplots: $(limitdir)/.breakdown $(limitdir)/.jsons ../script
 
 breakdownplots: $(limitdir)/.breakdownplots
 
-$(limitdir)/.impacts: $(limitdir)/.workspace ../scripts/impacts.sh
-	cd .. && scram b && cd - && cd $(limitdir) && impacts.sh ${runmode} && cd - && touch $@
-
-impacts: $(limitdir)/.impacts
+##
+## Deprecated, everything has moved to batch
+##
+## $(limitdir)/.impacts: $(limitdir)/.workspace ../scripts/impacts.sh
+## 	cd .. && scram b && cd - && cd $(limitdir) && impacts.sh ${runmode} && cd - && touch $@
+## 
+## impacts: $(limitdir)/.impacts
 
 #
 # Other random plots
