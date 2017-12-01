@@ -78,8 +78,14 @@ canvas.SaveAs('summary.png')
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import pickle
 plt.rc('text', usetex=True)
+plt.rcParams['text.latex.preamble']=[
+	r"\usepackage{amsmath}",
+]
+plt.rcParams["mathtext.default"] = 'regular'
+plt.rcParams["mathtext.fontset"] = "stix"
 plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 from pdb import set_trace
 
@@ -128,11 +134,11 @@ onescol = '#aeaeae'
 twoscol = '#c7c7c7'
 twosig = plt.fill_between(xs, y(best_points['exp+2']), y(best_points['exp-2']), color=twoscol)
 handles.append(
-    (mpatches.Patch(color=twoscol), r'$\pm2\sigma$\, Expected')
+    (mpatches.Patch(color=twoscol), r'$\mathsf{\pm2\sigma}$\, Expected')
     )
 onesig = plt.fill_between(xs, y(best_points['exp+1']), y(best_points['exp-1']), color=onescol)
 handles.append(
-    (mpatches.Patch(color=onescol), r'$\pm1\sigma$\, Expected')
+    (mpatches.Patch(color=onescol), r'$\mathsf{\pm1\sigma}$\, Expected')
     )
 
 #Fake observed, just to check it works
@@ -142,17 +148,23 @@ handles.append(
 ## )
 
 plt.xlabel(	
-	r'$m_{A}$\, (GeV)', fontsize=20, 
+	r'm$_{\mathrm{\mathsf{A}}}$\, (GeV)', fontsize=20, 
 	horizontalalignment='right', x=1.0, 
 )
 #by hand y label, in pyplot 1.4 it aligns properly, here not
 plt.ylabel(
-    r'tan$\beta$', fontsize=20, 
+    r'tan$\mathsf{\beta}$', fontsize=20, 
     horizontalalignment='right', 
     y=0.97 #shifts the label down just right
 )
 plt.xlim((x_min, x_max)) 
 plt.ylim((y_min, y_max)) 
+ax.xaxis.set_major_formatter(
+	ticker.FormatStrFormatter("%d")
+	)
+ax.yaxis.set_major_formatter(
+	ticker.FormatStrFormatter("%d")
+	)
 
 delta_y = y_max - y_min
 #rectangle around the legend and the CMS label
@@ -197,7 +209,7 @@ plt.text(
 #lumi stuff
 txt = plt.text(
     x_max-(x_max-x_min)*0.01, y_max+1.5*delta_y/10,
-    r'35.9 fb$^{-1}$ (13 TeV)',
+    r'35.9 fb$^{\mathsf{-1}}$ (13 TeV)',
     fontsize='x-large',
     horizontalalignment='right'
     )

@@ -9,12 +9,17 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pickle
 plt.rc('text', usetex=True)
-plt.rcParams['text.latex.preamble']=[r"\usepackage{amsmath}"]
+plt.rcParams['text.latex.preamble']=[
+	r"\usepackage{amsmath}",
+]
+plt.rcParams["mathtext.default"] = 'regular'
+plt.rcParams["mathtext.fontset"] = "stix"
 plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 import matplotlib.patches as patches
 from matplotlib.font_manager import FontProperties
+import matplotlib.ticker as ticker
 import math
 
 parser = ArgumentParser()
@@ -22,13 +27,13 @@ parser.add_argument('input')
 args = parser.parse_args()
 
 xlabels = {
-	'mass' : r'm$_{\mathrm{%s}}$\, (GeV)',
-	'width': r'width$_{\mathrm{%s}}$\, (\%%)',
+	'mass' : r'm$_{\mathrm{\mathsf{%s}}}$\, (GeV)',
+	'width': r'width$_{\mathrm{\mathsf{%s}}}$\, (\%%)',
 	}
 
 addenda = {
-	'width': r'\textbf{m}$\boldsymbol{_{\mathrm{%s}}= %d}$\textbf{\, GeV, }',
-	'mass' : r'\textbf{width}$\boldsymbol{_{\mathrm{%s}} = %.1f}$\textbf{\%%, }',
+	'width': r'\textbf{m}$\boldsymbol{_{\mathrm{\mathsf{%s}}} \mathsf{= %d}}$\textbf{\, GeV, }',
+	'mass' : r'\textbf{width}$\boldsymbol{_{\mathrm{\mathsf{%s}}} \mathsf{= %.1f}}$\textbf{\%%, }',
 	}
 
 vartoadd = {
@@ -47,6 +52,12 @@ def make_plot(subset, xvar):
 		
 		fig = plt.figure(figsize=(10, 10), dpi= 80, facecolor='w', edgecolor='k')
 		ax = fig.add_subplot(111)
+		ax.xaxis.set_major_formatter(
+			ticker.FormatStrFormatter("%d")
+			)
+		ax.yaxis.set_major_formatter(
+			ticker.FormatStrFormatter("%.1f")
+			)
 		handles = []
 		
 		#FIXME: add observed
@@ -65,11 +76,11 @@ def make_plot(subset, xvar):
 		
 		twosig = plt.fill_between(subset[xvar], subset['exp-2'], subset['exp+2'], color=twosigma)
 		handles.append(
-		    (mpatches.Patch(color=twosigma), r'$\pm2\sigma$\, Expected')
+		    (mpatches.Patch(color=twosigma), r'$\mathsf{\pm2\sigma}$\, Expected')
 		    )
 		onesig = plt.fill_between(subset[xvar], subset['exp+1'], subset['exp-1'], color=onesigma)
 		handles.append(
-		    (mpatches.Patch(color=onesigma), r'$\pm1\sigma$\, Expected')
+		    (mpatches.Patch(color=onesigma), r'$\mathsf{\pm1\sigma}$\, Expected')
 		    )
 		
 		#Fake observed, just to check it works
@@ -136,12 +147,14 @@ def make_plot(subset, xvar):
 		    )
 		
 		#lumi stuff
-		txt = plt.text(
+		ret.append(
+			plt.text(
 		    x_max-(x_max-x_min)*0.01, y_max+1.5*delta_y/10,
-		    r'35.9 fb$^{-1}$ (13 TeV)',
+		    r'35.9 fb$^{\mathsf{-1}}$ (13 TeV)',
 		    fontsize='x-large',
 		    horizontalalignment='right'
 		    )
+			)
 		
 		ax.tick_params(axis='both', labelsize='xx-large', which='both')
 		return ret
@@ -213,6 +226,9 @@ for parity in ['A', 'H']:
 	
 	fig = plt.figure(figsize=(10, 10), dpi= 80, facecolor='w', edgecolor='k')
 	ax = fig.add_subplot(111)
+	ax.xaxis.set_major_formatter(
+		ticker.FormatStrFormatter("%d")
+		)
 	#hardcoded
 	all_masses = np.array(masses+[775])-25./2
 	all_widths = [0.075]+[(widths[i]+widths[i-1])/2 for i in range(1, len(widths))]+[100]
@@ -235,10 +251,12 @@ for parity in ['A', 'H']:
 	#plt.xticks(masses)
 	ax.set_yscale('log')
 	ax.set_yticks(widths)
-	ax.get_yaxis().set_major_formatter(
-		matplotlib.ticker.ScalarFormatter()
+	ax.yaxis.set_major_formatter(
+		ticker.FormatStrFormatter("%.1f")
 		)
-	plt.colorbar()
+
+	cbar = plt.colorbar(heatmap, format=ticker.FormatStrFormatter("%.1f"))
+	cbar.ax.set_ylabel('coupling modifier')
 
 	plt.xlabel(	
 		xlabels['mass'] % parity, fontsize=20, 
@@ -285,7 +303,7 @@ for parity in ['A', 'H']:
 	#lumi stuff
 	txt = plt.text(
 		x_max-(x_max-x_min)*0.01, y_max+70,
-		r'35.9 fb$^{-1}$ (13 TeV)',
+		r'35.9 fb$^{\mathsf{-1}}$ (13 TeV)',
 		fontsize='x-large',
 		horizontalalignment='right'
 		)
