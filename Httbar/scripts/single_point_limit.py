@@ -24,6 +24,9 @@ parser.add_argument('mass', type=int)
 parser.add_argument('width', type=float)
 parser.add_argument('--noblind', action='store_true')
 parser.add_argument('--norm', action='store_true')
+parser.add_argument('--mergeLJ', action='store_true')
+parser.add_argument('--ignore', default='', help='ignore systematics')
+parser.add_argument('--extern', default='', help='externalize systematic')
 args = parser.parse_args()
 
 val2name = lambda x: str(x).replace('.','p').replace('p0','')
@@ -37,11 +40,21 @@ syscall(
 		os.environ['CMSSW_BASE'],
 		args.jobid
 		))
+
+if args.extern:
+	syscall('externalize.py templates_ALL_POINT.root %s' % args.extern)
+
 print '\n\ncreating workspace\n\n'
+opts = ''
+if args.mergeLJ:
+	opts += "--channels=cmbLJ "
+if args.ignore:
+	opts += "--ignore='%s'" % args.ignore
 syscall((
 		'setup_common.py POINT --parity={} --indir=./ --limitdir=./'
-		' --masses="{}" --widths="{}"').format(
-		args.parity, args.mass, val2name(args.width)
+		' --masses="{}" --widths="{}" {}').format(
+		args.parity, args.mass, val2name(args.width),
+		opts
 		))
 
 syscall((
@@ -53,8 +66,8 @@ syscall((
 print '\n\nRunning LIMIT\n\n'
 syscall((
 		'combineTool.py -M Asymptotic -d */*/workspace.root --there'
-		' -n .limit --minimizerTolerance=0.0001 --minimizerStrategy=2'
-		' --parallel 1 {}').format(
+		' -n .limit --minimizerTolerance=0.1 --minimizerStrategy=1'
+		' --rMin=0 --rMax=3 --parallel 1 {}').format(
 		'' if args.noblind else '--run blind -t -1'
 		))
 
@@ -63,7 +76,10 @@ syscall((
 		'.mH[0-9][0-9][0-9].root'
 		))
 
-shutil.move('limits.json', '%s_%d_%.1f.json' % (args.parity, args.mass, args.width))
+fname = '%s_%d_%.1f.json' % (args.parity, args.mass, args.width)
+if args.extern:
+	fname = fname.replace('.json', '_%s.json' % args.extern)
+shutil.move('limits.json', fname)
 if not args.norm:
 	shutil.rmtree(
 		'{}_{}'.format(
