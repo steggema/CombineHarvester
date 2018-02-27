@@ -99,7 +99,7 @@ with open(args.input_sushi) as sushi_pkl:
 	print '\n\nRunning LIMIT\n\n'
 	syscall((
 			'combineTool.py -M Asymptotic -d A_{}_{}_H_{}_{}/workspace.root --there -n'
-			' .limit --minimizerTolerance=0.0001 --minimizerStrategy=2 {}').format(
+			' .limit --minimizerTolerance=0.1 --minimizerStrategy=1 --rMin=0 --rMax=3 {}').format(
 			val2name(widthA), mA, val2name(widthH), mH, '' if args.noblind else '--run blind -t -1'
 			))
 	syscall((

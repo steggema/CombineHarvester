@@ -12,6 +12,7 @@ from ROOT import RooWorkspace, TFile, RooRealVar
 import CombineHarvester.CombineTools.ch as ch
 from CombineHarvester.CombinePdfs.morphing import BuildRooMorphing
 from pdb import set_trace
+from fnmatch import fnmatch
 
 #
 # ALL Systematic values in only one place
@@ -200,13 +201,15 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 
 def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses=['400', '500', '600', '750'], addBBB=True):
 	print '\n\n------------   L+J LIMIT SETTING   ------------'
-	cat_ids = [cat_mapping[i] for i in ['mujets', 'ejets']]
+	cat_ids = [cat_mapping[i] for i in ['mujets', 'ejets']] \
+	    if channel == 'cmb' or channel == 'lj' else \
+	    [cat_mapping[i] for i in ['lj']]
 
 	bbb_systematics = {}
 
 	if addBBB:
 		tf = ROOT.TFile(in_file)
-		for category in ['mujets', 'ejets']:
+		for category in (['lj'] if channel == 'cmbLJ' or channel == 'ljmerged' else ['mujets', 'ejets']):
 			cat_dir = tf.Get(category)
 			histos = [i.GetName() for i in cat_dir.GetListOfKeys()]
 			sys_name = lj_bbb_template % category
@@ -224,6 +227,18 @@ def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses
 		mucat = [(cat_mapping['mujets'], 'mujets')]
 		cb.AddProcesses(['*'], ['httbar'], ['13TeV'], [''], procs['bkg'] + procs['bkg_mu'], mucat, False)
 		cb.AddProcesses(masses, ['httbar'], ['13TeV'], [''], procs['sig'], mucat, True)
+
+	if channel == 'cmbLJ' or channel == 'ljmerged':
+		cat = [(cat_mapping['lj'], 'lj')]
+		cb.AddProcesses(
+			['*'], ['httbar'], ['13TeV'], [''], 
+			procs['bkg'] + procs['bkg_e'] + procs['bkg_mu'], 
+			cat, False
+			)
+		cb.AddProcesses(
+			masses, ['httbar'], ['13TeV'], [''], 
+			procs['sig'], cat, True
+			)
 
 	print '>> Adding systematic uncertainties...'
 
@@ -245,11 +260,25 @@ def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses
 
 	if channel in ['cmb', 'mj', 'lj']:
 		for shape_uncertainty in lj_by_lepton_uncs['mu']:
-			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_mapping['mujets']], 1.))
+			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+				cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_mapping['mujets']], 1.)
+				)
 
 	if channel in ['cmb', 'ej', 'lj']:
 		for shape_uncertainty in lj_by_lepton_uncs['el']:
-			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_mapping['ejets']], 1.))
+			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+				cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_mapping['ejets']], 1.)
+				)
+
+	if channel == 'cmbLJ' or channel == 'ljmerged':
+		for shape_uncertainty in lj_by_lepton_uncs['mu']:
+			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+				cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_mapping['lj']], 1.)
+				)
+		for shape_uncertainty in lj_by_lepton_uncs['el']:
+			cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
+				cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')([cat_mapping['lj']], 1.)
+				)
 
 	# SPECIFIC SHAPE UNCERTAINTIES
 	for shape_uncertainty in common_tt_shape_uncs+lj_shape_uncertainties_tt:
@@ -331,7 +360,7 @@ def writeCards(cb, jobid='dummy', mode='A', width='5', doMorph=False, verbose=Tr
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('jobid')
-	parser.add_argument('--channels' , choices=['ej', 'mj', 'll', 'lj', 'cmb'], help='choose leptonic decay type', default='cmb')
+	parser.add_argument('--channels' , choices=['ej', 'mj', 'll', 'lj', 'cmb', 'cmbLJ', 'ljmerged'], help='choose leptonic decay type', default='cmb')
 	parser.add_argument('--masses', default='400,500,600,750', help='comma separated list of masses')
 	parser.add_argument('--parity', default='A', help='comma separated list of parity (A,H only)')
 	parser.add_argument('--widths', default='2p5,5,10,25,50', help='comma separated list of widths')
@@ -343,11 +372,18 @@ if __name__ == '__main__':
 		'--silent', action='store_true', dest='silent', default=False)
 	parser.add_argument('--indir', default=os.environ['CMSSW_BASE'] + '/src/CombineHarvester/Httbar/data/', help='Input directories containing the data files')
 	parser.add_argument('--limitdir', default="", help='Output limit directories') 
+	parser.add_argument('--ignore', default="", help='ignore common systematics, supports POSIX regex, comma-separated list') 
+	parser.add_argument('--add_sys', default="", help='Add systemactis uncertainties, higher importance than ignoring them') 
 
 	args = parser.parse_args()
 	addBBB = args.addBBB
 	doMorph = args.doMorph
-
+	if args.ignore:
+		for ignore in args.ignore.split(','):
+			common_shape_uncs = [i for i in common_shape_uncs if not fnmatch(i, ignore)]
+	if args.add_sys:
+		common_shape_uncs.extend(args.add_sys.split(','))
+	
 	aux_shapes = args.indir
 	#set_trace()
 
@@ -366,6 +402,8 @@ if __name__ == '__main__':
 		'll' : ['ll'],
 		'lj' : ['mujets', 'ejets'], 
 		'cmb' : ['mujets', 'ejets', 'll'],
+		'cmbLJ' : ['lj', 'll'],
+		'ljmerged' : ['lj'],
 		}
 	categories = [i for i in enumerate(categories_map[args.channels])]
 	category_to_id = {a:b for b, a in categories}
@@ -390,7 +428,7 @@ if __name__ == '__main__':
 				procs = createProcessNames(width if special else [width], mode, 'lj', masses)
 				prepareLeptonPlusJets(cb, category_to_id, procs, in_file_lj if args.channels == 'lj' else in_file, args.channels, [''] if special else masses, addBBB=addBBB)
 		
-			if args.channels in ['ll', 'cmb']:
+			if args.channels in ['ll', 'cmb', 'cmbLJ']:
 				procs = createProcessNames(width if special else [width], mode, 'll', masses)
 				prepareDiLepton(cb, category_to_id, procs, in_file_ll if args.channels == 'll' else in_file, [''] if special else masses, addBBB=addBBB)
 		

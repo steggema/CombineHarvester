@@ -22,11 +22,9 @@ parser.add_argument('jobid')
 parser.add_argument('parity')
 parser.add_argument('mass', type=int)
 parser.add_argument('width', type=float)
-parser.add_argument('--noblind', action='store_true')
+parser.add_argument('ignore', help='ignore systematics')
+parser.add_argument('extern', help='externalize systematic')
 parser.add_argument('--norm', action='store_true')
-parser.add_argument('--mergeLJ', action='store_true')
-parser.add_argument('--ignore', default='', help='ignore systematics')
-parser.add_argument('--extern', default='', help='externalize systematic')
 args = parser.parse_args()
 
 val2name = lambda x: str(x).replace('.','p').replace('p0','')
@@ -41,15 +39,11 @@ syscall(
 		args.jobid
 		))
 
-if args.extern:
-	syscall('externalize.py templates_ALL_POINT.root %s' % args.extern)
+syscall('make_fake_data.py templates_ALL_POINT.root "%s"' % args.extern)
 
 print '\n\ncreating workspace\n\n'
 opts = ''
-if args.mergeLJ:
-	opts += "--channels=cmbLJ "
-if args.ignore:
-	opts += "--ignore='%s'" % args.ignore
+opts += "--ignore='%s'" % args.ignore
 syscall((
 		'setup_common.py POINT --parity={} --indir=./ --limitdir=./'
 		' --masses="{}" --widths="{}" {}').format(
@@ -67,9 +61,7 @@ print '\n\nRunning LIMIT\n\n'
 syscall((
 		'combineTool.py -M Asymptotic -d */*/workspace.root --there'
 		' -n .limit --minimizerTolerance=0.1 --minimizerStrategy=1'
-		' --rMin=0 --rMax=3 --parallel 1 {}').format(
-		'' if args.noblind else '--run blind -t -1'
-		))
+		' --parallel 1 --rMin=0 --rMax=3'))
 
 syscall((
 		'combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic'
@@ -83,16 +75,17 @@ shutil.move('limits.json', fname)
 if not args.norm:
 	shutil.rmtree(
 		'{}_{}'.format(
-			args.parity, args.mass, val2name(args.width)
+			args.parity, val2name(args.width)
 			)
 		)
 	for fname in glob('*.root'):
 		os.remove(fname)
 else:
 	syscall((
-			'tar -cvf {parity}_{mass}_{width}.tar'
+			'tar -cvf {parity}_{mass}_{width}_{ext}.tar'
 			' *.root {parity}_{width}/').format(
 			parity = args.parity,
 			mass = args.mass,
-			width = val2name(args.width)
+			width = val2name(args.width),
+			ext = args.extern
 			))
