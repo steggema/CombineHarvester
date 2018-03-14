@@ -3,6 +3,8 @@
 import sys
 import json
 import ROOT
+from fnmatch import fnmatch
+from pdb import set_trace
 import CombineHarvester.CombineTools.combine.utils as utils
 
 from CombineHarvester.CombineTools.combine.CombineToolBase import CombineToolBase
@@ -28,6 +30,8 @@ class Impacts(CombineToolBase):
         group.add_argument('--named', metavar='PARAM1,PARAM2,...', help=""" By
             default the list of nuisance parameters will be loaded from the
             input workspace. Use this option to specify a different list""")
+        group.add_argument('--filter', metavar='PARAM1,PARAM2,...', help=""" Filter 
+            the list of parameters scanned""")
         group.add_argument('--exclude', metavar='PARAM1,PARAM2,...', help=""" Skip
             these nuisances""")
         group.add_argument('--doInitialFit', action='store_true', help="""Find
@@ -88,6 +92,8 @@ class Impacts(CombineToolBase):
         if self.args.exclude is not None:
             exclude = self.args.exclude.split(',')
             paramList = [x for x in paramList if x not in exclude]
+        if self.args.filter:
+            paramList = [x for x in paramList if fnmatch(x, self.args.filter)]
 
         print 'Have nuisance parameters: ' + str(len(paramList))
         prefit = utils.prefit_from_workspace(ws, 'w', paramList, self.args.setPhysicsModelParameters)
