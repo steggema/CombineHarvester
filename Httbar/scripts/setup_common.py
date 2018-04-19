@@ -25,7 +25,6 @@ common_theory_uncs = [
 	LnNUnc(['VV'], 'CMS_httbar_VVNorm_13TeV', 1.5),
 	LnNUnc(['TT'], 'TTXsec', 1.06), #FIXME?
 	LnNUnc(['tWChannel'], 'CMS_httbar_tWChannelNorm_13TeV', 1.15),
-	LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.5),
 	LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5),
 	LnNUnc(['TTV'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
 ]
@@ -38,6 +37,7 @@ lj_theory_uncs = [
 	LnNUnc(['sChannel'], 'CMS_httbar_sChannelNorm_13TeV', 1.20),
 	LnNUnc(['QCDmujets'], 'CMS_httbar_QCDmujetsNorm', 2.0),
 	LnNUnc(['QCDejets'], 'CMS_httbar_QCDejetsNorm', 2.0),
+	LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.5),
 	]
 
 lumi_unc = 1.025
@@ -48,6 +48,21 @@ common_shape_uncs = [
 	#BTAG
 	'CMS_eff_b_13TeV', 
 	'CMS_fake_b_13TeV', 
+]
+lj_by_lepton_uncs = {
+	'mu' : ['CMS_eff_trigger_m', 'CMS_eff_m'],
+	'el' : ['CMS_eff_trigger_e', 'CMS_eff_e']
+}
+lj_shape_uncs = []
+ll_shape_uncs = ['CMS_eff_trigger_l', 'CMS_eff_e', 'CMS_eff_m']
+
+#tt shapes
+common_tt_shape_uncs = [
+	# Theory
+	'CMS_httbar_PDF_alphaS', 'CMS_httbar_PDF_1', 'CMS_httbar_PDF_2', 
+	'QCDscaleFSR_TT', 'Hdamp_TT', 
+	'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT',
+	'CMS_TopPt1_TT', 'CMS_TopPt2_TT',
 	#JES
 	'CMS_scale_j_13TeV_AbsoluteStat',
 	'CMS_scale_j_13TeV_AbsoluteScale',
@@ -73,20 +88,6 @@ common_shape_uncs = [
 	#MET
 	'CMS_METunclustered_13TeV'
 ]
-lj_by_lepton_uncs = {
-	'mu' : ['CMS_eff_trigger_m', 'CMS_eff_m'],
-	'el' : ['CMS_eff_trigger_e', 'CMS_eff_e']
-}
-lj_shape_uncs = []
-ll_shape_uncs = ['CMS_eff_trigger_l', 'CMS_eff_e', 'CMS_eff_m']
-
-#tt shapes
-common_tt_shape_uncs = [
-		'CMS_httbar_PDF_alphaS', 'CMS_httbar_PDF_1', 'CMS_httbar_PDF_2', 
-		'QCDscaleFSR_TT', 'Hdamp_TT', 
-		'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT',
-		'CMS_TopPt1_TT', 'CMS_TopPt2_TT'
-		]
 ll_shape_uncertainties_tt = []
 lj_shape_uncertainties_tt = [] #missing top pt! #should also LJ remove it?
 #ll/TT_QCDscaleMEFactor_ggH-sgnDown
@@ -119,7 +120,7 @@ def createProcessNames(widths=['5', '10', '25', '50'], modes=['A'], chan='cmb', 
 		'bkg_e':['QCDejets']
 	}
 	procs_ll = {
-	    'bkg': ['WJets', 'tWChannel', 'VV', 'ZJets', 'TT', 'TTV'],
+	    'bkg': ['tWChannel', 'VV', 'ZJets', 'TT', 'TTV'],
 	}
 
 	if not any('A:' in x or 'H:' in x for x in widths):
