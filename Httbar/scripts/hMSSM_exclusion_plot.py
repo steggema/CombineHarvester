@@ -56,7 +56,7 @@ x_min = min(
 	min(x for x, _ in mapping.iterkeys())
 	)
 x_max = max(
-	max(x for x, _ in mapping.iterkeys())+50,
+	max(x for x, _ in mapping.iterkeys())+32,
 	g_excluded.GetXaxis().GetXmax()
 	)
 g_excluded.GetXaxis().SetLimits(x_min, x_max)
@@ -128,34 +128,34 @@ handles.append(
 
 canter = plt.plot(x(best_points['exp0']), y(best_points['exp0']), 'k--')
 handles.append(
-    (mlines.Line2D([], [], color='k', linestyle='--'), 'Expected')
+    (mlines.Line2D([], [], color='k', linestyle='--', linewidth=3), 'Expected')
     )
 onescol = '#aeaeae'
 twoscol = '#c7c7c7'
 twosig = plt.fill_between(xs, y(best_points['exp+2']), y(best_points['exp-2']), color=twoscol)
-handles.append(
-    (mpatches.Patch(color=twoscol), r'$\mathsf{\pm2\sigma}$\, Expected')
-    )
 onesig = plt.fill_between(xs, y(best_points['exp+1']), y(best_points['exp-1']), color=onescol)
 handles.append(
-    (mpatches.Patch(color=onescol), r'$\mathsf{\pm1\sigma}$\, Expected')
+    (mpatches.Patch(color=onescol), r'$\mathsf{\pm}$1 s.d.\,expected')
+    )
+handles.append(
+    (mpatches.Patch(color=twoscol), r'$\mathsf{\pm}$2 s.d.\,expected')
     )
 
 #Fake observed, just to check it works
-## plt.fill_between(
-## 	xs, [0]*len(xs), [8, 6, 5, 4.3, 3.5, 3, 2, 1.5], 
-## 	facecolor=obs_color, edgecolor='k', linewidth=1
-## )
+plt.fill_between(
+	xs, [0]*len(xs), y(best_points['exp0']), 
+	facecolor=obs_color, edgecolor='k', linewidth=1
+)
 
 plt.xlabel(	
-	r'm$_{\mathrm{\mathsf{A}}}$\, (GeV)', fontsize=20, 
+	r'm$_{\mathrm{\mathsf{A}}}$\, (GeV)', fontsize=32, 
 	horizontalalignment='right', x=1.0, 
 )
 #by hand y label, in pyplot 1.4 it aligns properly, here not
 plt.ylabel(
-    r'tan$\mathsf{\beta}$', fontsize=20, 
+    r'tan$\mathsf{\beta}$', fontsize=32, 
     horizontalalignment='right', 
-    y=0.97 #shifts the label down just right
+    y=0.94 #shifts the label down just right
 )
 plt.xlim((x_min, x_max)) 
 plt.ylim((y_min, y_max)) 
@@ -167,54 +167,61 @@ ax.yaxis.set_major_formatter(
 	)
 
 delta_y = y_max - y_min
-#rectangle around the legend and the CMS label
-ax.add_patch(
-    patches.Rectangle(
-        (x_min, y_max),   # (x,y)
-        (x_max-x_min),          # width
-        1.35*delta_y/10,          # height
-        clip_on=False,
-        facecolor='w'
-    )
-)
+# #rectangle around the legend and the CMS label
+# ax.add_patch(
+#     patches.Rectangle(
+#         (x_min, y_max),   # (x,y)
+#         (x_max-x_min),          # width
+#         1.35*delta_y/10,          # height
+#         clip_on=False,
+#         facecolor='w'
+#     )
+# )
 
 #legend
 from matplotlib.font_manager import FontProperties
 fontP = FontProperties()
-fontP.set_size('x-large')
-legend_x = 0.45
+fontP.set_size(32)
+legend_x = 0.1
 plt.legend(
 	x(handles), y(handles),
-	bbox_to_anchor=(legend_x, 1., .55, .102), loc=3,
+	bbox_to_anchor=(0.58, 0.93),#, .55, .102), 
+	loc=1,
 	ncol=2, mode="expand", borderaxespad=0.,
-	fontsize='x-large',
+	fontsize=29,
 	frameon=False,
+	# title=r'\textbf{95\% CL exclusion}:'
 )
-#legend title (again, due to version)
-txt = plt.text(
-    x_min+(x_max-x_min)*(legend_x+0.01), y_max+delta_y*.102,
-		r'\textbf{95\% CL Excluded}:',
-    fontsize='x-large',
-    horizontalalignment='left'
-    )
+
 
 #CMS blurb
+# plt.text(
+#     x_min+(x_max-x_min)*0.05, y_max+.2*delta_y/10,
+#     r'''\textbf{CMS}
+# \textit{Preliminary}''',
+#     fontsize=32
+#     )
 plt.text(
-    x_min+(x_max-x_min)*0.05, y_max+.2*delta_y/10,
-    r'''\textbf{CMS}
-\textit{Preliminary}''',
-    fontsize=32
+	x_min+(x_max-x_min)*0.01, y_max+0.025*delta_y,
+	r'''\textbf{CMS} \textit{Preliminary}''',
+	fontsize=32
+	)
+#legend title (again, due to version)
+plt.text(
+    x_min+(x_max-x_min)*0.02, y_max-0.06*delta_y,
+    r'95\% CL exclusion:',
+    fontsize=29,
+    # horizontalalignment='left',
     )
-
 #lumi stuff
 txt = plt.text(
-    x_max-(x_max-x_min)*0.01, y_max+1.5*delta_y/10,
+    x_max-(x_max-x_min)*0.01, y_max+0.025*delta_y,
     r'35.9 fb$^{\mathsf{-1}}$ (13 TeV)',
-    fontsize='x-large',
+    fontsize=32,
     horizontalalignment='right'
     )
 
-ax.tick_params(axis='both', labelsize='xx-large', which='both')
+ax.tick_params(axis='both', labelsize=29, which='both')
 
 #plt.show()
 plt.savefig(
