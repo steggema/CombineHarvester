@@ -21,7 +21,7 @@ import json
 import os
 
 kfactors = None
-if args.kfactors:
+if args.kfactors and args.kfactors not in ['None', 'none']:
 	if not os.path.isfile(args.kfactors):
 		raise IOError('File: %s does not exist' % args.kfactors)
 	kfactors = json.loads(open(args.kfactors).read())
@@ -133,7 +133,7 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	  
 	  if kfactors:
 	   if key not in kfactors:
-	    print 'skipping key %s as not found in json' % key
+	    print 'WARNING: k-factors: skipping key %s as not found in json' % key
 	    continue
 	   shapes_map[_type][k][w].Scale(kfactors[key])
 	

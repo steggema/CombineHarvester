@@ -14,6 +14,7 @@ parser.add_argument('masses')
 parser.add_argument('widths')
 parser.add_argument('--doNotRemove')
 parser.add_argument('--noblind', action='store_true')
+parser.add_argument('--nokfactors', action='store_true')
 args = parser.parse_args()
 
 if not os.path.isdir(args.outdir):
@@ -41,7 +42,7 @@ executable = %s
 Output = con_{idx}.out
 Error = con_{idx}.err
 Log = con_{idx}.log
-Arguments = {jobid} {parity} {mass} {width} {blind} {norm}
+Arguments = {jobid} {parity} {mass} {width} {blind} {keep} {kfactor}
 Queue
 '''.format(
 				idx=idx,
@@ -50,6 +51,7 @@ Queue
 				mass=mass,
 				width=width,
 				blind= '--noblind' if args.noblind else '',
-				norm='--norm' if ':'.join([parity,mass,width]) in do_not_remove else ''
+				keep='--keep' if ':'.join([parity,mass,width]) in do_not_remove else '',
+				kfactor='--kfactor None' if args.nokfactors else ''
 				))
 				idx += 1

@@ -3,6 +3,7 @@ from timeit import default_timer as timer
 
 from os import path
 import sys
+import math
 import resource
 from argparse import ArgumentParser
 from numpy import array
@@ -49,6 +50,8 @@ print 'Using mass binning: ', OUTPUT_BINNING
 N_REGIONS = 5
 MIN_MASS = 250.0 if isLJ else 325.0
 MAX_MASS = 1200.0 if isLJ else 1400.0
+
+TT_KFACTOR = 1.5732 # https://indico.cern.ch/event/663021/contributions/2786263/attachments/1555834/2447515/top_pp_v1.pdf
 
 bkgfile = ROOT.TFile(args.bkgfile)
 
@@ -405,7 +408,11 @@ for channel in channels:
                     h_out.SetBinError(i_bin+1, 0.)
 				
             if args.kfactor != 1:
-                h_out.Scale(args.kfactor)
+                if pattern in ['pos-int', 'neg-int']:
+                    h_out.Scale(math.sqrt(args.kfactor*TT_KFACTOR))
+                else:
+                    print 'INFO: Using signal k factor of', args.kfactor
+                    h_out.Scale(args.kfactor)
 				
             h_out.Write()
             # print 'Writing', test_mass, h_out.Integral()

@@ -23,7 +23,7 @@ parser.add_argument('mA', type=int)
 parser.add_argument('tanb')
 parser.add_argument('input_sushi')
 parser.add_argument('--noblind', action='store_true')
-parser.add_argument('--norm', action='store_true')
+parser.add_argument('--keep', action='store_true')
 parser.add_argument('--force', help='force the values for debugging')
 # parser.add_argument('inputs_bkg', help='comma separated list of bkg input files. Same order required as for signal files')
 # parser.add_argument('outfile')
@@ -63,11 +63,17 @@ with open(args.input_sushi) as sushi_pkl:
 			elif parity == 'H':
 				mH = int(mass)
 				widthH = float(width)
-
+	
+	kFactorA = values['A_nnlo']/values['A_lo']
+	kFactorH = values['H_nnlo']/values['H_lo']
+	
 	print 'For mA =', mA, 'tan(beta) =', tanb, 'obtain:'
 	print '  widthA =', widthA
 	print '  widthH =', widthH
 	print '  mH =', mH
+	print '  k factor A', kFactorA
+	print '  k factor H', kFactorH
+
 	## if widthH < 1. or widthA < 1.:
 	## 	print 'LIMITING WIDTH TO 1%'
 	## 	widthA = max(widthA, 1.)
@@ -77,8 +83,7 @@ with open(args.input_sushi) as sushi_pkl:
 		mH = 750
 	if mH > 759:
 		raise ValueError('mH beyond accepted limits')
-	
-	syscall('make_point.sh {} TESTME A:{}:{} H:{}:{}'.format(args.jobid, mA, widthA, mH, widthH))
+	syscall('make_point.sh {} None TESTME A:{}:{}:{} H:{}:{}:{}'.format(args.jobid, mA, widthA, kFactorA, mH, widthH, kFactorH))
 	syscall(
 		'hadd -f templates_ALL_POINT.root TESTME.root '
 		'%s/src/CombineHarvester/Httbar/data/templates_l?_bkg_%s.root' % (
@@ -108,7 +113,7 @@ with open(args.input_sushi) as sushi_pkl:
 			val2name(widthA), mA, val2name(widthH), mH
 			))
 shutil.move('limits.json', 'mA%d_tanb%s.json' % (mA, tanb))
-if not args.norm:
+if not args.keep:
 	shutil.rmtree(
 		'A_{}_{}_H_{}_{}'.format(
 			val2name(widthA), mA, val2name(widthH), mH
