@@ -1,0 +1,21 @@
+Runs 2HDMC and SusHi:
+- to get cross sections or k factors for LO -> NNLO ggH/ggA production
+- to get H mass for given A mass for hMSSM interpretation
+
+Requires 2HDMC and SusHi installations.
+Tested with:
+- 2HDMC 1.7.0:
+     compile with Makefile
+       LDFLAGS=-L/cvmfs/cms.cern.ch/slc6_amd64_gcc481/external/gsl/1.10/lib -lgsl -lgslcblas -lm
+       CFLAGS= -Wall $(DEBUG) $(OPT) -I/cvmfs/cms.cern.ch/slc6_amd64_gcc481/external/gsl/1.10/include/
+     to get CMS-external gsl
+    
+    Before using, need to set
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/cvmfs/cms.cern.ch/slc6_amd64_gcc481/external/gsl/1.10/lib
+
+- SusHi 1.6.1: 
+    compile with "make predef=2HDMC" and change location of 2HDMC in Makefile
+    set LHAPATH =  /cvmfs/cms.cern.ch/slc6_amd64_gcc481/external/lhapdf/6.2.1/lib in Makefile
+
+
+
