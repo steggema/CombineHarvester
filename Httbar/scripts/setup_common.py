@@ -25,11 +25,12 @@ common_theory_uncs = [
 	LnNUnc(['VV'], 'CMS_httbar_VVNorm_13TeV', 1.5),
 	LnNUnc(['TT'], 'TTXsec', 1.06), #FIXME?
 	LnNUnc(['tWChannel'], 'CMS_httbar_tWChannelNorm_13TeV', 1.15),
-	LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5),
+	# LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5), #FIXME - decorrelate for l+j and dilepton
 	LnNUnc(['TTV'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
 ]
 
 ll_theory_uncs = [
+	LnNUnc(['ZJets'], 'CMS_httbar_ZNormll_13TeV', 1.5), #FIXME - decorrelate for l+j and dilepton
 	]
 
 lj_theory_uncs = [
@@ -38,6 +39,7 @@ lj_theory_uncs = [
 	LnNUnc(['QCDmujets'], 'CMS_httbar_QCDmujetsNorm', 2.0),
 	LnNUnc(['QCDejets'], 'CMS_httbar_QCDejetsNorm', 2.0),
 	LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.5),
+	LnNUnc(['ZJets'], 'CMS_httbar_ZNormlj_13TeV', 1.5), #FIXME - decorrelate for l+j and dilepton
 	]
 
 lumi_unc = 1.025
@@ -169,7 +171,7 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 
 	# EXPERIMENT
 	cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
-		cb, 'lumi', 'lnN', ch.SystMap('bin_id')(cat_ids, lumi_unc))
+		cb, 'lumi_13TeV', 'lnN', ch.SystMap('bin_id')(cat_ids, lumi_unc))
 
 	# GENERIC SHAPE UNCERTAINTIES
 	for shape_uncertainty in common_shape_uncs+ll_shape_uncs:
@@ -253,7 +255,7 @@ def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses
 
 	# EXPERIMENT
 	cb.cp().process(procs['sig'] + procs['bkg']).AddSyst(
-		cb, 'lumi', 'lnN', ch.SystMap('bin_id')(cat_ids, lumi_unc))
+		cb, 'lumi_13TeV', 'lnN', ch.SystMap('bin_id')(cat_ids, lumi_unc))
 
 	# GENERIC SHAPE UNCERTAINTIES
 	for shape_uncertainty in common_shape_uncs+lj_shape_uncs:
@@ -389,8 +391,8 @@ if __name__ == '__main__':
 	#set_trace()
 
 	in_file = aux_shapes + 'templates_ALL_%s.root' % args.jobid
-	in_file_lj = aux_shapes + 'templates_lj_%s.root' % args.jobid
-	in_file_ll = aux_shapes + 'templates_ll_%s.root' % args.jobid
+	in_file_lj = in_file # aux_shapes + 'templates_lj_%s.root' % args.jobid
+	in_file_ll = in_file # aux_shapes + 'templates_ll_%s.root' % args.jobid
 
 	masses = args.masses.split(',')
 	widths = args.widths.split(',')#['5', '10', '25', '50'] # in percent
