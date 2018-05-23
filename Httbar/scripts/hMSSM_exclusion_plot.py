@@ -22,6 +22,7 @@ excluded = {
 	"exp-1": [],
 	"exp-2": [],
 	"exp0" : [],
+	"obs" : []
 }
 failed = []
 
@@ -40,33 +41,35 @@ for point, vals in mapping.iteritems():
 		if vals[key] < 1/tb: excluded[key].append(point)
 
 print 'Excluded %d points, %d failed' % (len(excluded), len(failed))
-g_excluded = make_graph(excluded["exp0"])
-g_excluded.SetMarkerColor(4)
-g_excluded.SetMarkerStyle(20)
-g_failed = make_graph(failed)
-g_failed.SetMarkerColor(2)
-g_failed.SetMarkerStyle(34)
 
-canvas = ROOT.TCanvas('asd', 'asd', 800, 800)
-g_excluded.Draw('AP')
-g_failed.Draw('P same')
+for excl_type in excluded:
+	g_excluded = make_graph(excluded[excl_type])
+	g_excluded.SetMarkerColor(4)
+	g_excluded.SetMarkerStyle(20)
+	g_failed = make_graph(failed)
+	g_failed.SetMarkerColor(2)
+	g_failed.SetMarkerStyle(34)
 
-x_min = min(
-	g_excluded.GetXaxis().GetXmin(),
-	min(x for x, _ in mapping.iterkeys())
-	)
-x_max = max(
-	max(x for x, _ in mapping.iterkeys())+32,
-	g_excluded.GetXaxis().GetXmax()
-	)
-g_excluded.GetXaxis().SetLimits(x_min, x_max)
-y_min = min(x for _, x in mapping.iterkeys())
-y_max = max(x for _, x in mapping.iterkeys())*1.2
-g_excluded.GetYaxis().SetRangeUser(y_min, y_max)
-g_excluded.GetXaxis().SetTitle('m(A)')
-g_excluded.GetYaxis().SetTitle('tan #beta')
+	canvas = ROOT.TCanvas('asd', 'asd', 800, 800)
+	g_excluded.Draw('AP')
+	g_failed.Draw('P same')
 
-canvas.SaveAs('summary.png')
+	x_min = min(
+		g_excluded.GetXaxis().GetXmin(),
+		min(x for x, _ in mapping.iterkeys())
+		)
+	x_max = max(
+		max(x for x, _ in mapping.iterkeys())+32,
+		g_excluded.GetXaxis().GetXmax()
+		)
+	g_excluded.GetXaxis().SetLimits(x_min, x_max)
+	y_min = min(x for _, x in mapping.iterkeys())
+	y_max = max(x for _, x in mapping.iterkeys())*1.2
+	g_excluded.GetYaxis().SetRangeUser(y_min, y_max)
+	g_excluded.GetXaxis().SetTitle('m(A)')
+	g_excluded.GetYaxis().SetTitle('tan #beta')
+
+	canvas.SaveAs('summary_{}.png'.format(excl_type))
 
 #
 # Get nicer plot
@@ -99,8 +102,19 @@ xs = sorted(list(set([x for x, _ in mapping.keys()])))
 for key in excluded:
     points = excluded[key]
     loc_xs = list(set(i for i, _ in points))
-    ys = [max(y for x, y in points if x == i) for i in loc_xs]
-    current_points = dict(zip(loc_xs, ys))
+    
+    ### Do not ignore outliers (simple algo)
+    # ys = [max(y for x, y in points if x == mass) for mass in loc_xs]
+    # current_points = dict(zip(loc_xs, ys))
+
+    ### The following updated logic will ignore outliers, using the fact that 
+    ### the minimal non-excluded tan(beta) value is the most conservative
+    current_points = {}
+    for mass in loc_xs:
+        all_at_mass = sorted([y for x, y in mapping.keys() if x == mass and (x, y) not in failed])
+        excl_at_mass = sorted([y for x, y in points if x == mass])
+        current_points[mass] = min(y for y in all_at_mass if y not in excl_at_mass)
+
     for x in xs:
         if x not in current_points:
             current_points[x] = 0. #default value
@@ -143,7 +157,7 @@ handles.append(
 
 #Fake observed, just to check it works
 plt.fill_between(
-	xs, [0]*len(xs), y(best_points['exp0']), 
+	xs, [0]*len(xs), y(best_points['obs']), 
 	facecolor=obs_color, edgecolor='k', linewidth=1
 )
 
