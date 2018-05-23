@@ -15,6 +15,7 @@ parser.add_argument('widths')
 parser.add_argument('--doNotRemove')
 parser.add_argument('--noblind', action='store_true')
 parser.add_argument('--nokfactors', action='store_true')
+parser.add_argument('--runScan', action='store_true')
 args = parser.parse_args()
 
 if not os.path.isdir(args.outdir):
@@ -23,7 +24,7 @@ if not os.path.isdir(args.outdir):
 do_not_remove = set(args.doNotRemove.split(','))
 
 masses = [str(j) for j in arange(*[int(i) for i in args.masses.split(':')])] \
-	 if ':' in args.masses else args.masses.split(',')
+	if ':' in args.masses else args.masses.split(',')
 
 with open('%s/condor.jdl' % args.outdir, 'w') as jdl:
 	jdl.write('''
@@ -42,7 +43,7 @@ executable = %s
 Output = con_{idx}.out
 Error = con_{idx}.err
 Log = con_{idx}.log
-Arguments = {jobid} {parity} {mass} {width} {blind} {keep} {kfactor}
+Arguments = {jobid} {parity} {mass} {width} {blind} {keep} {kfactor} {scan}
 Queue
 '''.format(
 				idx=idx,
@@ -50,8 +51,9 @@ Queue
 				parity=parity,
 				mass=mass,
 				width=width,
-				blind= '--noblind' if args.noblind else '',
-				keep='--keep' if ':'.join([parity,mass,width]) in do_not_remove else '',
-				kfactor='--kfactor None' if args.nokfactors else ''
+				blind='--noblind' if args.noblind else '',
+				keep='--keep' if ':'.join([parity, mass, width]) in do_not_remove else '',
+				kfactor='--kfactor None' if args.nokfactors else '',
+				scan='--runScan' if args.runScan else ''
 				))
 				idx += 1

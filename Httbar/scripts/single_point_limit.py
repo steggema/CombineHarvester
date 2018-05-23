@@ -25,9 +25,11 @@ parser.add_argument('width', type=float)
 parser.add_argument('--noblind', action='store_true')
 parser.add_argument('--keep', action='store_true')
 parser.add_argument('--mergeLJ', action='store_true')
+parser.add_argument('--channels', default='', help='leptonic decay type')
 parser.add_argument('--ignore', default='', help='ignore systematics')
 parser.add_argument('--extern', default='', help='externalize systematic')
 parser.add_argument('--kfactor', default='$CMSSW_BASE/src/CombineHarvester/Httbar/data/kfactors.json', help='location of k factor json file (None if none)')
+parser.add_argument('--runScan', action='store_true', help='run scan of AsymptoticLimits instead of limit only')
 args = parser.parse_args()
 
 val2name = lambda x: str(x).replace('.','p').replace('p0','')
@@ -49,6 +51,8 @@ print '\n\ncreating workspace\n\n'
 opts = ''
 if args.mergeLJ:
 	opts += "--channels=cmbLJ "
+if args.channels:
+	opts += "--channels={}".format(args.channels)
 if args.ignore:
 	opts += "--ignore='%s'" % args.ignore
 syscall((
@@ -65,30 +69,44 @@ syscall((
 		))
 
 print '\n\nRunning LIMIT\n\n'
-syscall((
-		'combineTool.py -M Asymptotic -d */*/workspace.root --there'
-		' -n .limit --minimizerTolerance=0.1 --minimizerStrategy=1'
-		' --rMin=0 --rMax=3 --parallel 1 {}').format(
-		'' if args.noblind else '--run blind -t -1'
-		))
+if not args.runScan:
+	syscall((
+			'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
+			' -n .limit'
+			' --rMin=0 --rMax=3 --rRelAcc 0.001 --parallel 1 {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, 
+			'' if args.noblind else '--run blind -t -1'
+			))
 
-syscall((
-		'combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic'
-		'.mH[0-9][0-9][0-9].root'
-		))
+	syscall((
+			'combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits'
+			'.mH[0-9][0-9][0-9].root'
+			))
+	fname = '%s_%d_%.1f.json' % (args.parity, args.mass, args.width)
+	if args.extern:
+		fname = fname.replace('.json', '_%s.json' % args.extern)
+	shutil.move('limits.json', fname)
+else:
+		syscall((
+			'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
+			' -n .limit'
+			' --rMin=0 --rMax=3 --rRelAcc 0.001 --parallel 8  --singlePoint 0.:3.:0.03 {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, 
+			'' if args.noblind else '--run blind -t -1'
+			))
+		syscall((
+			'hadd {par}_{m}_{wid}_limits_gathered.root {par}_{wid}/{m}/higgsCombine.limit*POINT*AsymptoticLimits*.root'.format(
+			par=args.parity, wid=val2name(args.width), m=args.mass)
+			))
 
-fname = '%s_%d_%.1f.json' % (args.parity, args.mass, args.width)
-if args.extern:
-	fname = fname.replace('.json', '_%s.json' % args.extern)
-shutil.move('limits.json', fname)
+
 if not args.keep:
 	shutil.rmtree(
 		'{}_{}/{}'.format(
 			args.parity, val2name(args.width), args.mass, 
 			)
 		)
-	for fname in glob('*.root'):
-		os.remove(fname)
+	if not args.runScan:
+		for fname in glob('*.root'):
+			os.remove(fname)
 else:
 	syscall((
 			'tar -cvf {parity}_{mass}_{width}.tar'

@@ -1,13 +1,11 @@
 #! /bin/env python
 
-import pickle
 from argparse import ArgumentParser
 from pdb import set_trace
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import pickle
 plt.rc('text', usetex=True)
 plt.rcParams['text.latex.preamble']=[
 	r"\usepackage{amsmath}",
@@ -17,10 +15,7 @@ plt.rcParams["mathtext.default"] = 'regular'
 plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
-import matplotlib.patches as patches
-from matplotlib.font_manager import FontProperties
 import matplotlib.ticker as ticker
-import math
 
 parser = ArgumentParser()
 parser.add_argument('input')
@@ -64,11 +59,16 @@ def make_plot(subset, xvar):
 			)
 		handles = []
 		
-		#FIXME: add observed
-		## observed = plt.plot(
-		## 	subset[xvar], np.random.normal(scale=0.15, size=len(subset['exp0']))+subset['exp0'], 
-		## 	color='k', linestyle='-', markersize=10, marker='.'
-		## 	)
+		# #FIXME: add observed
+		# observed = plt.plot(
+		# 	subset[xvar], np.random.normal(scale=0.15, size=len(subset['exp0']))+subset['exp0'], 
+		# 	color='k', linestyle='-', markersize=10, marker='.'
+		# 	)
+		observed = plt.plot(
+			subset[xvar], subset['obs'], 
+			color='k', linestyle='-', markersize=10, marker='.'
+			)
+
 		handles.append(
 		    (mlines.Line2D([], [], color='k', linestyle='-', markersize=10, marker='.'), 'Observed')
 		    )
@@ -101,7 +101,7 @@ def make_plot(subset, xvar):
 		plt.ylabel(
 		    r'95\% C.L. limit on coupling modifier', fontsize=32, 
 		    horizontalalignment='right', 
-		    # y=0.9 #shifts the label down just right
+		    y=0.9 #shifts the label down just right
 		)
 		plt.xlim((x_min, x_max)) 
 		plt.ylim((y_min, y_max)) 
@@ -255,7 +255,8 @@ for parity in ['A', 'H']:
 	
 	heatmap = plt.pcolormesh(
 		X, Y, Z,
-		cmap=plt.cm.Greens,
+		# cmap=plt.cm.Greens,
+		cmap=plt.cm.YlGnBu,
 		vmin=subset['exp0'].min()*0.2, 
 		vmax=subset['exp0'].max()*1.2
 		)
