@@ -64,8 +64,8 @@ groups = {
 	'PU'        : ['CMS_pileup'],
 	'Theory'    : ['*_TT', 'TMass', 'pdf'],	
 	'Theo_TMass': ['TMass'],	
-	'Theo_pdf'  : ['pdf'],	
-	'Theo_QCDScale' : ['*_TT'],	
+	'Theo_pdf'  : ['CMS_httbar_PDF_alphaS', 'CMS_httbar_PDF_1', 'CMS_httbar_PDF_2'],	
+	'Theo_HigherOrders' : ['*_TT'],	
 }
 groups['Experimental'] = groups['BTag']+groups['Leptons']+groups['JetMET']+groups['PU']+groups['QCDNorm']
 
@@ -84,17 +84,22 @@ class Backup:
 			raise value
 
 #backup files
-#backed_up = [backup(i) for i in glob('[AH]_[0-9]*/000/higgsCombine.limit.Asymptotic.*.root')]
+#backed_up = [backup(i) for i in glob('[AH]_[0-9]*/000/higgsCombine.limit.AsymptoticLimits.*.root')]
 
-with Backup(glob('[AH]_[0-9]*/[0-9][0-9][0-9]/higgsCombine.limit.Asymptotic.*.root')) as back:
+with Backup(glob('[AH]_[0-9]*/[0-9][0-9][0-9]/higgsCombine.limit.AsymptoticLimits.*.root')) as back:
 	#run limits
 	for group, names in groups.iteritems():
 		print 'running for group: ', group
 		tofreeze = [i for i in nuisances if any((fnmatch(i, j) for j in names))]
 		if not tofreeze:
 			raise RuntimeError('I could not find any nuisance matching the group %s (%s)' % (group, ', '.join(names)))
+		print 'Run', 'combineTool.py -M AsymptoticLimits --freezeNuisances {freeze} -d */{masses}/workspace.root --there -n .limit --parallel 8 {opts}'.format(
+				freeze=','.join(tofreeze),
+				opts='--run blind' if args.run == 'blind' else '',
+				masses = args.masses
+				)
 		call(
-			('combineTool.py -M Asymptotic --freezeNuisances {freeze}'
+			('combineTool.py -M AsymptoticLimits --freezeNuisances {freeze}'
 			 ' -d */{masses}/workspace.root --there -n .limit --parallel 8 {opts}').format(
 				freeze=','.join(tofreeze),
 				opts='--run blind' if args.run == 'blind' else '',
@@ -102,7 +107,7 @@ with Backup(glob('[AH]_[0-9]*/[0-9][0-9][0-9]/higgsCombine.limit.Asymptotic.*.ro
 				)
 			)
 	  #tag outputs
-		[tag(i, group) for i in glob('[AH]_[0-9]*/%s/higgsCombine.limit.Asymptotic.*.root' % args.masses)]
+		[tag(i, group) for i in glob('[AH]_[0-9]*/%s/higgsCombine.limit.AsymptoticLimits.*.root' % args.masses)]
 		call(
 			'combineTool.py -M CollectLimits */*/{0}_*.limit.* --use-dirs -o {0}.json'.format(group)
 			)

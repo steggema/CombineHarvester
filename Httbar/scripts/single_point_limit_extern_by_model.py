@@ -94,14 +94,14 @@ if args.extern:
 		val = args.externval,
 		)
 syscall((
-		'combineTool.py -M Asymptotic -d */*/workspace.root --there -n .limit'
-		' --minimizerTolerance=0.1 --minimizerStrategy=1 --parallel 1 --rMin=0 --rMax=3'
+		'combineTool.py -M AsymptoticLimits -d */*/workspace.root --there -n .limit'
+		' --parallel 1 --rMin=0 --rMax=3'
 		' -t -1 {opts} --toysFile=asimov.root').format(
 		mass = args.mass,
 		opts = opts
 		))
 syscall((
-		'combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic'
+		'combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits'
 		'.mH[0-9][0-9][0-9].root'
 		))
 

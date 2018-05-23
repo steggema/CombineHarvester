@@ -59,12 +59,12 @@ syscall((
 
 print '\n\nRunning LIMIT\n\n'
 syscall((
-		'combineTool.py -M Asymptotic -d */*/workspace.root --there'
-		' -n .limit --minimizerTolerance=0.1 --minimizerStrategy=1'
+		'combineTool.py -M AsymptoticLimits -d */*/workspace.root --there'
+		' -n .limit'
 		' --parallel 1 --rMin=0 --rMax=3'))
 
 syscall((
-		'combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic'
+		'combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits'
 		'.mH[0-9][0-9][0-9].root'
 		))
 

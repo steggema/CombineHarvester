@@ -51,7 +51,7 @@ limits: $(limitdir)/.limit
 
 $(limitdir)/.jsons: $(limitdir)/.limit ../scripts/transpose_jsons.py
 	cd .. && scram b && cd - && cd $(limitdir) && \
-	combineTool.py -M CollectLimits */*/higgsCombine.limit.Asymptotic.mH[0-9][0-9][0-9].root --use-dirs && \
+	combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits.mH[0-9][0-9][0-9].root --use-dirs && \
 	transpose_jsons.py limits_A_[0-9]*.json && cd - && touch $@
 
 jsons: $(limitdir)/.jsons
