@@ -41,7 +41,7 @@ class EnhancedCombine(CombineToolBase):
         group.add_argument(
             '--run', choices=['both', 'observed', 'expected', 'blind', ''], default='', help='what and how to run')
         group.add_argument(
-            '--freezeNuisances', default='', help='coma-separated list of nuisances to freeze')
+            '--freezeNuisances', default='', help='comma-separated list of nuisances to freeze')
 
 
     def attach_args(self, group):
@@ -160,7 +160,7 @@ class EnhancedCombine(CombineToolBase):
             self.passthru.extend(['--run', self.args.run])
 
         if self.args.freezeNuisances:
-            self.passthru.extend(['--freezeNuisances=%s' % self.args.freezeNuisances])
+            self.passthru.extend(['--freezeParameters=%s' % self.args.freezeNuisances])
 
         if self.args.boundlist is not None:
             # We definitely don't need to put the parameter ranges back
