@@ -122,7 +122,7 @@ for mA in masses:
                 output = output.split('\n')
                 d_mtb[higgs+'_nnlo'] = getValFromSusHi(output, 'xsec')
                 d_mtb[higgs+'_nlo'] = getValFromSusHi(output, 'NLO')
-                d_mtb[higgs+'_lo'] = getValFromSusHi(output, 'LO')
+                d_mtb[higgs+'_lo'] = getValFromSusHi(output, ' LO') # need space before LO, otherwise finds NLO value
                 d_mtb[higgs+'_nnlo_unc_down'] = getValFromSusHi(output, ' muR unc.', pos=3)
                 d_mtb[higgs+'_nnlo_unc_up'] = getValFromSusHi(output, ' muR unc.', pos=5)
                 
