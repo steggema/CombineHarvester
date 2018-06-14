@@ -172,6 +172,7 @@ plt.ylabel(
     y=0.94 #shifts the label down just right
 )
 plt.xlim((x_min, x_max)) 
+y_max += 2.
 plt.ylim((y_min, y_max)) 
 ax.xaxis.set_major_formatter(
 	ticker.FormatStrFormatter("%d")

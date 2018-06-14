@@ -25,12 +25,12 @@ common_theory_uncs = [
 	LnNUnc(['VV'], 'CMS_httbar_VVNorm_13TeV', 1.5),
 	LnNUnc(['TT'], 'TTXsec', 1.06), #FIXME?
 	LnNUnc(['tWChannel'], 'CMS_httbar_tWChannelNorm_13TeV', 1.15),
-	# LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5), #FIXME - decorrelate for l+j and dilepton
+	# LnNUnc(['ZJets'], 'CMS_httbar_ZNorm_13TeV', 1.5), #Removed here - decorrelated for l+j and dilepton
 	LnNUnc(['TTV'], 'CMS_httbar_TTVNorm_13TeV', 1.3),
 ]
 
 ll_theory_uncs = [
-	LnNUnc(['ZJets'], 'CMS_httbar_ZNormll_13TeV', 1.5), #FIXME - decorrelate for l+j and dilepton
+	LnNUnc(['ZJets'], 'CMS_httbar_ZNormll_13TeV', 1.5),
 	]
 
 lj_theory_uncs = [
@@ -39,7 +39,7 @@ lj_theory_uncs = [
 	LnNUnc(['QCDmujets'], 'CMS_httbar_QCDmujetsNorm', 2.0),
 	LnNUnc(['QCDejets'], 'CMS_httbar_QCDejetsNorm', 2.0),
 	LnNUnc(['WJets'], 'CMS_httbar_WNorm_13TeV', 1.5),
-	LnNUnc(['ZJets'], 'CMS_httbar_ZNormlj_13TeV', 1.5), #FIXME - decorrelate for l+j and dilepton
+	LnNUnc(['ZJets'], 'CMS_httbar_ZNormlj_13TeV', 1.5),
 	]
 
 lumi_unc = 1.025
@@ -456,7 +456,12 @@ if __name__ == '__main__':
 				mode_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'A' in a])
 				width_name = 'H_'
 				width_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'H' in a])
-			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent,limitdir = args.limitdir)
+			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent, limitdir = args.limitdir)
+			if not addBBB:
+				for i_channel in xrange(3):
+					with open('/'.join([mode_name+'_'+width_name, masses[0], 'httbar__'+str(i_channel)])+'.txt', 'a') as txt_card:
+						txt_card.write('\n* autoMCStats 0.')
+
 
 	print '>> Done!'
 

@@ -19,6 +19,9 @@ for block in blocks[1:]:
     key = tuple(block.split('Arguments = ')[1].split(' ')[1:4])
     block_map[key] = block
 
+MAX_LIM = 3.
+STEP_SIZE = 0.01
+
 summary = {}
 npass = 0
 fails = []
@@ -43,7 +46,7 @@ for key, submit in block_map.iteritems():
             continue
         
         limits = rfile.Get('limit')
-        lims = ['obs', 'exp0', 'exp-2', 'exp-1', 'exp+1', 'exp+2']
+        lims = ['obs', 'exp-2', 'exp-1', 'exp0', 'exp+1', 'exp+2']
         quantiles = [-1, 0.025, 0.160, 0.5, 0.840, 0.975]
         # d_upper_limits = {lim:[] for lim in lims}
         # d_lower_limits = {lim:[] for lim in lims}
@@ -53,6 +56,8 @@ for key, submit in block_map.iteritems():
         
         all_cls = [[] for _ in range(len(lims))]
 
+
+        print 'File', rname
         # First aggregate all CLs values (with the beautiful entry name entry.limit)
         for entry in limits:
             for i_q, quantile in enumerate(quantiles):
@@ -67,74 +72,127 @@ for key, submit in block_map.iteritems():
         # Then outlier removal and  limit determination
         for i_q, quantile in enumerate(quantiles):
             cls_vals = all_cls[i_q]
+            len_vals = len(cls_vals)
             down_outlier_flag = False
-            for i_val, cls_val in enumerate(cls_vals):
+            up_outlier_flag = False
+            cls_vals_plus_g = [(cls_val, i_g*STEP_SIZE) for i_g, cls_val in enumerate(cls_vals) if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
+            cls_vals = [cls_val for cls_val in cls_vals if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
+
+            for i_val, (cls_val, g) in enumerate(cls_vals_plus_g):
                 if i_val == 0:
                     continue
+
+                if i_val < len_vals - 3 and cls_val < 0.05 and cls_vals[i_val-2] > 0.05 and cls_vals[i_val-1] > 0.05 and cls_vals[i_val+1] > 0.05 and cls_vals[i_val+2] > 0.05:
+                    print '--_-- outlier'
+                    down_outlier_flag = True
+                    continue
+
+                if i_val < len_vals - 3 and cls_val < 0.05 and cls_vals[i_val-2] > 0.05 and cls_vals[i_val-1] > 0.05 and cls_vals[i_val+1] > 0.05 and cls_vals[i_val+2] < 0.05:
+                    print '--_-_ outlier'
+                    down_outlier_flag = True
+                    continue
+
                 if cls_val < 0.05 and cls_vals[i_val-1] > 0.05:
                     # Outlier detection
+                    if up_outlier_flag and len(upper_limits[i_q]) > 0: # Make sure there's some UL already
+                        print 'Previous point marked as upward outlier, continue'
+                        up_outlier_flag = False
+                        continue
+
                     if abs(cls_val - cls_vals[i_val-1]) > 0.035:
-                        # print 'Found large jump in limit value, investigating'
+                        print 'Found large jump in limit value, investigating', g
+                        if i_val > len(cls_vals) - 3:
+                            print 'At the end, will just continue'
+                            print i_val, cls_vals
+                            continue
                         if cls_val < cls_vals[i_val+1]:
-                            if cls_vals[i_val+1] > 0.05:
-                                # print 'Next CLs value higher, marking as outlier', cls_vals[i_val-1], cls_val, cls_vals[i_val+1]
+                            if cls_vals[i_val+1] > 0.05 and abs(cls_vals[i_val-1] - cls_vals[i_val+1]) < 0.05:
+                                print 'Next CLs value higher, marking as outlier', cls_vals[i_val-1], cls_val, cls_vals[i_val+1]
                                 down_outlier_flag = True
                                 continue
                             elif cls_vals[i_val+2] < 0.05:
-                                pass
-                                # print 'Next CLs value higher, but both next and next-to-next values below 0.05, so likely fine', cls_vals[i_val-1], cls_val, cls_vals[i_val+1],  cls_vals[i_val+2]
+                                print 'Next CLs value higher, but both next and next-to-next values below 0.05, so likely fine', cls_vals[i_val-1], cls_val, cls_vals[i_val+1],  cls_vals[i_val+2]
                             elif cls_vals[i_val+2] < 0.05:
                                 print 'Complicated... but let\'s say it\'s ok', cls_vals[i_val-2], cls_vals[i_val-1], cls_val, cls_vals[i_val+1], cls_vals[i_val+2], cls_vals[i_val+3]
                             else:
                                 print 'Complicated... but let\'s say it\'s not ok', cls_vals[i_val-2], cls_vals[i_val-1], cls_val, cls_vals[i_val+1], cls_vals[i_val+2], cls_vals[i_val+3]
                                 down_outlier_flag = True
                                 continue
-                        elif  cls_val < cls_vals[i_val+2]:
-                            # print '!!! Next-to-next CLs value higher, maybe double outlier', cls_vals[i_val-1], cls_val, cls_vals[i_val+1],  cls_vals[i_val+2]
-                            down_outlier_flag = True
-                            continue
+                        # elif cls_val < cls_vals[i_val+2] and abs(cls_vals[i_val-1] - cls_vals[i_val+2]) < 0.05:
+                        #     print '!!! Next-to-next CLs value higher, maybe double outlier', cls_vals[i_val-1], cls_val, cls_vals[i_val+1],  cls_vals[i_val+2]
+                        #     if cls_vals[i_val+2] > 0.05 and cls_vals[i_val+3] > 0.05:
+                        #         down_outlier_flag = True
+                        #         continue
                         elif abs(cls_vals[i_val-2] - cls_vals[i_val-1]) > 0.5*abs(cls_val - cls_vals[i_val-1]):
-                            # print 'Already in large gradient region, likely fine', cls_vals[i_val-2], cls_vals[i_val-1], cls_val
+                            print 'Already in large gradient region, likely fine', cls_vals[i_val-2], cls_vals[i_val-1], cls_val
                             pass
                         else:
                             print 'Need to investigate...', cls_vals[i_val-2], cls_vals[i_val-1], cls_val, cls_vals[i_val+1], cls_vals[i_val+2]
-                            import pdb; pdb.set_trace()
+                            pass
+                            # import pdb; pdb.set_trace()
                     if i_val == 1:
                         import pdb; pdb.set_trace()
-                    upper_limits[i_q].append(i_val*0.03 - 0.015) # FIXME, weighted mean based on distance to 0.05??
+
+                    upper_limits[i_q].append(g - STEP_SIZE/2.) # FIXME, weighted mean based on distance to 0.05??
+                up_outlier_flag = False
+                
+                if i_val < len_vals - 3 and cls_val > 0.05 and cls_vals[i_val-2] < 0.05 and cls_vals[i_val-1] < 0.05 and cls_vals[i_val+1] < 0.05 and cls_vals[i_val+2] < 0.05:
+                    print '__-__ outlier'
+                    up_outlier_flag = True
+                    continue
 
                 if cls_val > 0.05 and cls_vals[i_val-1] < 0.05:
+                    if i_val > len(cls_vals) - 3:
+                        print 'At the end, will just continue'
+                        continue
                     if abs(cls_val - cls_vals[i_val-1]) > 0.035:
-                        # print 'Found large jump in limit value, investigating'
-                        if cls_val > cls_vals[i_val+1]:
-                            # print 'Next CLs value lower, marking as outlier'
+                        print 'Found large jump in limit value, investigating', g
+                        if cls_val > cls_vals[i_val+1] and abs(cls_vals[i_val-1] - cls_vals[i_val+1]) < 0.05:
+                            print 'Next CLs value lower, marking as outlier'
+                            up_outlier_flag = True
                             continue
-                        elif cls_val > cls_vals[i_val+2]:
-                            # print '!!! Next-to-next CLs value lower, maybe double outlier', cls_vals[i_val-1], cls_val, cls_vals[i_val+1],  cls_vals[i_val+2]
-                            continue
+                        # elif cls_val > cls_vals[i_val+2]:
+                        #     print '!!! Next-to-next CLs value lower, maybe double outlier', cls_vals[i_val-1], cls_val, cls_vals[i_val+1],  cls_vals[i_val+2]
+                        #     up_outlier_flag = True
+                        #     continue
                         elif down_outlier_flag:
-                            # print 'Previous point marked as downward outlier'
+                            print 'Previous point marked as downward outlier'
                             down_outlier_flag = False
                             continue
                         elif abs(cls_vals[i_val-2] - cls_vals[i_val-1]) > 0.5*abs(cls_val - cls_vals[i_val-1]):
                             pass
-                            # print 'Already in large gradient region, likely fine'
+                            print 'Already in large gradient region, likely fine'
+                        elif cls_val == 0.5 or cls_val == 0. or cls_vals[i_val-1] == 0.5 or cls_vals[i_val-1] == 0.:
+                            print 'Outlier-like value, continue', cls_val
+                            continue
                         else:
                             print 'Need to investigate...'
                             import pdb; pdb.set_trace()
                     down_outlier_flag = False
-                    lower_limits[i_q].append(i_val*0.03 - 0.015) # FIXME, weighted mean based on distance to 0.05??
+                    lower_limits[i_q].append(g - STEP_SIZE/2.) # FIXME, weighted mean based on distance to 0.05??
 
             if not upper_limits[i_q]:
                 print 'No upper limit found, investigating...'
                 if all(v>0.05 for v in cls_vals):
                     print 'All CLs values above 0.05, fine! Mass, width:', mass, width
-                    upper_limits[i_q].append(5.)
+                    upper_limits[i_q].append(MAX_LIM)
                 elif cls_vals[-1] > 0.05:
                     print 'Last CLs value above 0.05, so likely fine but with outlier(s)', mass, width
-                    upper_limits[i_q].append(5.)
+                    upper_limits[i_q].append(MAX_LIM)
                 else:
                     import pdb; pdb.set_trace()
+
+            # if len(upper_limits[i_q]) > 1:
+            #     import pdb; pdb.set_trace()
+
+            if len(lower_limits[i_q]) > 0 and i_q == 0:
+                if lower_limits[i_q][0] < upper_limits[i_q][0]:
+                    del lower_limits[i_q][0]
+                else:
+                    import pdb; pdb.set_trace()
+
+            # if int(mass) == 550 and int(width[0]) == 5:
+            #     import pdb; pdb.set_trace()
 
 
         npass += 1
@@ -148,7 +206,7 @@ for key, item in summary.items():
     mass = int(mass)
     width = float(width)
     if item:
-        vals_list.append(tuple([parity, mass, width] + item[0] + item[1]))
+        vals_list.append(tuple([parity, mass, width] + [i[0] for i in item[0]] + [i[0] if i else MAX_LIM for i in item[1]] + [i[1] if len(i) > 1 else (MAX_LIM if j else np.nan) for i, j in zip(item[0], item[1])]))
 
 print '''Run Summary:
   Successful jobs: %d
@@ -170,10 +228,9 @@ if fails:
 #     exit(0)
 
 with open('%s/summary.npy' % args.submission_dir, 'wb') as out:
-    import pdb; pdb.set_trace()
     arr = np.array(
         vals_list,
-        dtype = [('parity', 'S1'), ('mass', 'i4'), ('width', 'f4')] + [(str(i), 'f4') for i in lims]
+        dtype = [('parity', 'S1'), ('mass', 'i4'), ('width', 'f4')] + [(str(i), 'f4') for i in lims] + [(str(i)+'lower', 'f4') for i in lims] + [(str(i)+'upper', 'f4') for i in lims]
         )
     np.save(out, arr)
 
