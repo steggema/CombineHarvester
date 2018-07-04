@@ -1,15 +1,21 @@
 #! /bin/env python
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import pickle
 from argparse import ArgumentParser
 from pdb import set_trace
+import numpy as np
+from copy import deepcopy
 
 parser = ArgumentParser()
 parser.add_argument('input')
 args = parser.parse_args()
 
 with open(args.input) as pkl:
-	mapping = pickle.load(pkl)
+	mapping = np.load(pkl)
 
 import ROOT
 ROOT.gROOT.SetStyle('Plain')
@@ -32,15 +38,36 @@ def make_graph(points):
 		gr.SetPoint(i, xy[0], xy[1])
 	return gr
 
-for point, vals in mapping.iteritems():
-	_, tb = point
-	if not vals or (set(excluded.keys()) - set(vals.keys())) : 
+dubious = [] #when bifurcation happens
+not_excluded = deepcopy(excluded)
+for entry in mapping:
+	tb = entry['tanb']
+	point = (entry['mA'], tb)
+	val = entry['obs']
+	if np.isnan(entry['exp0']):
 		failed.append(point)
 		continue
+	hMSSMg = 1/tb
 	for key in excluded:
-		if vals[key] < 1/tb: excluded[key].append(point)
+		if np.isnan(entry['%supper' % key]): #single region limit
+			if entry[key] < hMSSMg:
+				excluded[key].append(point)
+			else:
+				not_excluded[key].append(point)
+		else: #disjunct limit
+			if entry['%supper' % key] == 3 or entry['%supper' % key] > hMSSMg: #3 = max value
+				if entry[key] < hMSSMg < entry['%slower' % key]: #inside the disjunct region
+					excluded[key].append(point)
+				else:
+					not_excluded[key].append(point)
+			elif entry['%supper' % key] < hMSSMg: #disjunct, but below the exclusion point, is safe
+				excluded[key].append(point)
+			else:
+				print "This should never happen"
+				set_trace()
+				print "blah"
 
-print 'Excluded %d points, %d failed' % (len(excluded), len(failed))
+print 'Excluded %d points, %d failed' % (len(excluded['exp0']), len(failed))
 
 for excl_type in excluded:
 	g_excluded = make_graph(excluded[excl_type])
@@ -56,20 +83,35 @@ for excl_type in excluded:
 
 	x_min = min(
 		g_excluded.GetXaxis().GetXmin(),
-		min(x for x, _ in mapping.iterkeys())
+		mapping['mA'].min()
 		)
 	x_max = max(
-		max(x for x, _ in mapping.iterkeys())+32,
+		mapping['mA'].max()+32,
 		g_excluded.GetXaxis().GetXmax()
 		)
 	g_excluded.GetXaxis().SetLimits(x_min, x_max)
-	y_min = min(x for _, x in mapping.iterkeys())
-	y_max = max(x for _, x in mapping.iterkeys())*1.2
+	y_min = mapping['tanb'].min()
+	y_max = mapping['tanb'].max()*1.2
 	g_excluded.GetYaxis().SetRangeUser(y_min, y_max)
 	g_excluded.GetXaxis().SetTitle('m(A)')
 	g_excluded.GetYaxis().SetTitle('tan #beta')
 
 	canvas.SaveAs('summary_{}.png'.format(excl_type))
+
+# Check that there are no disjunct zones, otherwise die
+for key in excluded:
+	excl = excluded[key]
+	notexc = not_excluded[key]
+	masses = set([i for i, _ in notexc])
+	for mass in masses:
+		m_ex = [j for i, j in excl if i == mass]
+		if not m_ex: continue #if there are no points excluded everythins is fine
+		max_ex = max(m_ex)
+		m_nex = [j for i, j in notexc if i == mass]
+		if any(i < max_ex for i in m_nex):
+			raise RuntimeError('The tanb exclusion is not continuous for %s and m(A) = %d' % (key, mass))
+
+print 'The exclusions look OK, I can plot them!'
 
 #
 # Get nicer plot
@@ -78,11 +120,6 @@ for excl_type in excluded:
 # all the internals and working from there.
 #
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import pickle
 plt.rc('text', usetex=True)
 plt.rcParams['text.latex.preamble']=[
 	r"\usepackage{amsmath}",
@@ -92,32 +129,34 @@ plt.rcParams["mathtext.fontset"] = "stix"
 plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 from pdb import set_trace
 
-x_min = min(x for x, _ in mapping.iterkeys())
-x_max = 700 #max(x for x, _ in mapping.iterkeys())
-y_min = min(x for _, x in mapping.iterkeys())
-y_max = max(x for _, x in mapping.iterkeys())
+
+x_min = mapping['mA'].min()
+x_max = 700 #mapping['mA'].max()
+y_min = mapping['tanb'].min()
+y_max = mapping['tanb'].max()
 
 best_points = {}
-xs = sorted(list(set([x for x, _ in mapping.keys()])))
+xs = sorted(list(set(mapping['mA'])))
 for key in excluded:
     points = excluded[key]
-    loc_xs = list(set(i for i, _ in points))
-    
+    loc_xs = xs
+    points += [(i, 0.) for i in xs]
+
     ### Do not ignore outliers (simple algo)
-    # ys = [max(y for x, y in points if x == mass) for mass in loc_xs]
-    # current_points = dict(zip(loc_xs, ys))
+    ys = [max(y for x, y in points if x == mass) for mass in loc_xs]
+    current_points = dict(zip(loc_xs, ys))
 
     ### The following updated logic will ignore outliers, using the fact that 
     ### the minimal non-excluded tan(beta) value is the most conservative
-    current_points = {}
-    for mass in loc_xs:
-        all_at_mass = sorted([y for x, y in mapping.keys() if x == mass and (x, y) not in failed])
-        excl_at_mass = sorted([y for x, y in points if x == mass])
-        current_points[mass] = min(y for y in all_at_mass if y not in excl_at_mass)
-
-    for x in xs:
-        if x not in current_points:
-            current_points[x] = 0. #default value
+    ## current_points = {}
+    ## for mass in loc_xs:
+    ##     all_at_mass = sorted(mapping[mapping['mA'] == mass]['tanb'])
+    ##     excl_at_mass = sorted([y for x, y in points if x == mass])
+    ##     current_points[mass] = min(y for y in all_at_mass if y not in excl_at_mass)
+    ## 
+    ## for x in xs:
+    ##     if x not in current_points:
+    ##         current_points[x] = 0. #default value
     best_points[key] = sorted(current_points.items())
 
 x = lambda vv: [i for i, _ in vv]

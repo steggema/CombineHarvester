@@ -120,6 +120,7 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	hyperbolic = { "sgn": True, "int": False}
 	for _type in shapes:
 	 for shape in shapes[_type]:
+	  # print shape
 	  k, w = get_info(shape)
 	  if k not in shapes_map[_type]:
 	   shapes_map[_type][k] = {}
@@ -198,4 +199,5 @@ for category in [i.GetName() for i in infile.GetListOfKeys()]:
 	   new_hist.Add(above, factor)
 	   new_hist.Write()
 	   counter += 1
-	   print "Category-{} done: {}/{}".format(category,counter,nMorph)
+	   if counter % 10 == 0:
+		   print "Category-{} done: {}/{}".format(category,counter,nMorph)
