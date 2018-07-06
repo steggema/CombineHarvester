@@ -8,6 +8,7 @@ import resource
 from argparse import ArgumentParser
 from numpy import array
 import gc
+import numpy as np
 
 parser = ArgumentParser()
 parser.add_argument('inputfile')
@@ -390,30 +391,63 @@ for channel in channels:
                 del item
         
         # Now collate the hists from the different regions for all masses, including the available
-        for test_mass in to_make+available:
-            if args.fortesting and test_mass != args.fortesting: continue
-            if args.single and test_mass != args.single: continue
+	available_avg_err = []
+        for test_mass in available+to_make:
+            #even for single points dump everything, we need it to compute uncertainties
             n_bins_out = N_REGIONS*(len(OUTPUT_BINNING) - 1)
             #set_trace()
             outfile.cd()
             outdir = outfile.Get(channel)
             outdir.cd()
             h_out = ROOT.TH1D(d_hists_region[0][test_mass].GetName()[:-1].replace(channel, ''), '', n_bins_out, 0., float(n_bins_out))
-				
+                                
             for i_costheta in xrange(N_REGIONS):
                 h_part = d_hists_region[i_costheta][test_mass]
                 n_bins_part = h_part.GetNbinsX()
+                y_t = None
+                if test_mass not in available:
+                    #assumes that available_avg_err has been properly computed beforehand in the same loop
+                    x_b, y_b = min( #below
+                        [(i, j) for i, j in available_avg_err if i < test_mass], 
+                        key=lambda x: abs(x[0]-test_mass)
+                        )
+                    x_a, y_a = min( #above
+                        [(i, j) for i, j in available_avg_err if i > test_mass], 
+                        key=lambda x: abs(x[0]-test_mass)
+                        )
+                    y_t = (y_a-y_b)*(test_mass-x_b)/(x_a-x_b)+y_b
+
                 for i_bin in xrange(n_bins_part):
-                    h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinContent(i_bin+1))
-                    h_out.SetBinError(i_bin+1, 0.)
-				
+                    content = h_part.GetBinContent(i_bin+1)
+                    h_out.SetBinContent(i_bin+1 + i_costheta*n_bins_part, content)
+                    if test_mass in available:
+                        h_out.SetBinError(i_bin+1 + i_costheta*n_bins_part, h_part.GetBinError(i_bin+1))
+                    else: 
+                        h_out.SetBinError(i_bin+1 + i_costheta*n_bins_part, y_t*math.sqrt(content))
+                            
+            
+            #save average event weight to propagate uncertainties to the signal
+            if test_mass in available: 
+                vals = []
+                errs = []
+                for ibin in range(1, h_out.GetNbinsX()+2):
+                    val = h_out.GetBinContent(ibin)
+                    err = h_out.GetBinError(ibin)
+                    if val:
+                        vals.append(val)
+                        errs.append(err)
+                vals = np.array(vals)
+                errs = np.array(errs)
+                ratios = errs/np.sqrt(vals)
+                available_avg_err.append((test_mass, ratios.mean()))
+
             if args.kfactor != 1:
                 if pattern in ['pos-int', 'neg-int']:
                     h_out.Scale(math.sqrt(args.kfactor*TT_KFACTOR))
                 else:
                     print 'INFO: Using signal k factor of', args.kfactor
                     h_out.Scale(args.kfactor)
-				
+
             h_out.Write()
             # print 'Writing', test_mass, h_out.Integral()
 
