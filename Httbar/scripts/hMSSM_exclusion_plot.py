@@ -55,13 +55,17 @@ for entry in mapping:
 			else:
 				not_excluded[key].append(point)
 		else: #disjunct limit
+			print 'Disjuct! ', key, point
 			if entry['%supper' % key] == 3 or entry['%supper' % key] > hMSSMg: #3 = max value
 				if entry[key] < hMSSMg < entry['%slower' % key]: #inside the disjunct region
+					print ' excluded inside disjunction'
 					excluded[key].append(point)
 				else:
+					print ' NOT excluded'
 					not_excluded[key].append(point)
 			elif entry['%supper' % key] < hMSSMg: #disjunct, but below the exclusion point, is safe
 				excluded[key].append(point)
+				print ' excluded outside boundary'
 			else:
 				print "This should never happen"
 				set_trace()

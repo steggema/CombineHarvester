@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 import json
 from pdb import set_trace
 from ROOT import TFile
-from CombineHarvester.Httbar.scantools import harvest_and_outlier_removal
+from CombineHarvester.Httbar.scantools import harvest_and_outlier_removal, andrey_harvest_and_outlier_removal
 
 parser = ArgumentParser()
 parser.add_argument('input_sushi')
@@ -36,7 +36,9 @@ for entry in mapping.itervalues():
 	tanb = entry['tan(beta)']
 	key = (mA, tanb)
 	strkey = '%d %.1f' % (mA, tanb)
+	#if strkey != '740 3.3': continue
 	rname = '%s/mA%d_tanb%.1f_limits_gathered.root' % (args.submission_dir, mA, tanb)
+	#print rname
 	if entry['m_H'] > 759:
 		print 'm(H) beyond accepted limits, will not compute'
 		mis_runs += 1
@@ -53,12 +55,20 @@ for entry in mapping.itervalues():
 			continue
 
 		limits = rfile.Get('limit')
-		#print 'File', rname
-		upper_limits, lower_limits = harvest_and_outlier_removal(limits, MAX_LIM=MAX_LIM)
+		print 'File', rname
+		upper_limits, lower_limits = andrey_harvest_and_outlier_removal(
+			#harvest_and_outlier_removal(
+			limits, 
+			#MAX_LIM=MAX_LIM, 
+			plot=rname.replace('.root', '.png')
+			)
+		#set_trace()
 		npass += 1
 		if any(len(i) > 1 for i in upper_limits):
 			nbisected += 1
-		summary[key] = [upper_limits, lower_limits]
+		if upper_limits:
+			summary[key] = [upper_limits, lower_limits]
+		else: summary[key] = []
 		
 print '''Run Summary:
   Successful jobs: %d
