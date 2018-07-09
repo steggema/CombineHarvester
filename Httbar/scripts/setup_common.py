@@ -13,6 +13,7 @@ import CombineHarvester.CombineTools.ch as ch
 from CombineHarvester.CombinePdfs.morphing import BuildRooMorphing
 from pdb import set_trace
 from fnmatch import fnmatch
+from glob import glob
 
 #
 # ALL Systematic values in only one place
@@ -458,8 +459,10 @@ if __name__ == '__main__':
 				width_name += '_'.join([a.split(':')[1] for a in widths[0] + masses if 'H' in a])
 			writeCards(cb, '_%s_%s' % (args.channels, args.jobid), mode_name, width_name, doMorph, verbose=not args.silent, limitdir = args.limitdir)
 			if not addBBB:
-				for i_channel in xrange(3):
-					with open('/'.join([mode_name+'_'+width_name, masses[0], 'httbar__'+str(i_channel)])+'.txt', 'a') as txt_card:
+				driname = '/'.join([mode_name+'_'+width_name, '*']) if len(mode) == 1 else mode_name+'_'+width_name
+				txt_files = glob('%s/httbar__*.txt' % driname)
+				for txt_file in txt_files:
+					with open(txt_file, 'a') as txt_card:
 						txt_card.write('\n* autoMCStats 0.')
 
 
