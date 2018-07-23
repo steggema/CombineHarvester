@@ -62,7 +62,8 @@ for key, submit in block_map.iteritems():
         for entry in limits:
             for i_q, quantile in enumerate(quantiles):
                 if abs(entry.quantileExpected - quantile) < 0.0001:
-                    all_cls[i_q].append(entry.limit)
+                    all_cls[i_q].append((entry.g, entry.limit))
+
 
 
         upper_limits = [[] for _ in range(len(lims))]
@@ -71,26 +72,30 @@ for key, submit in block_map.iteritems():
 
         # Then outlier removal and  limit determination
         for i_q, quantile in enumerate(quantiles):
-            cls_vals = all_cls[i_q]
-            len_vals = len(cls_vals)
+            cls_vals = sorted(all_cls[i_q])
+            
             down_outlier_flag = False
             up_outlier_flag = False
-            cls_vals_plus_g = [(cls_val, i_g*STEP_SIZE) for i_g, cls_val in enumerate(cls_vals) if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
-            cls_vals = [cls_val for cls_val in cls_vals if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
+            cls_vals_plus_g = [(g, cls_val) for g, cls_val in cls_vals if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
+            cls_vals = [cls_val for _, cls_val in cls_vals_plus_g if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
+            len_vals = len(cls_vals)
 
-            for i_val, (cls_val, g) in enumerate(cls_vals_plus_g):
+            for i_val, (g, cls_val) in enumerate(cls_vals_plus_g):
                 if i_val == 0:
                     continue
 
-                if i_val < len_vals - 3 and cls_val < 0.05 and cls_vals[i_val-2] > 0.05 and cls_vals[i_val-1] > 0.05 and cls_vals[i_val+1] > 0.05 and cls_vals[i_val+2] > 0.05:
-                    print '--_-- outlier'
-                    down_outlier_flag = True
-                    continue
+                try:
+                    if cls_val < 0.05 and cls_vals[i_val-2] > 0.05 and cls_vals[i_val-1] > 0.05 and cls_vals[i_val+1] > 0.05 and cls_vals[i_val+2] > 0.05:
+                        print '--_-- outlier'
+                        down_outlier_flag = True
+                        continue
 
-                if i_val < len_vals - 3 and cls_val < 0.05 and cls_vals[i_val-2] > 0.05 and cls_vals[i_val-1] > 0.05 and cls_vals[i_val+1] > 0.05 and cls_vals[i_val+2] < 0.05:
-                    print '--_-_ outlier'
-                    down_outlier_flag = True
-                    continue
+                    if cls_val < 0.05 and cls_vals[i_val-2] > 0.05 and cls_vals[i_val-1] > 0.05 and cls_vals[i_val+1] > 0.05 and cls_vals[i_val+2] < 0.05:
+                        print '--_-_ outlier'
+                        down_outlier_flag = True
+                        continue
+                except IndexError:
+                    pass
 
                 if cls_val < 0.05 and cls_vals[i_val-1] > 0.05:
                     # Outlier detection
@@ -185,11 +190,19 @@ for key, submit in block_map.iteritems():
             # if len(upper_limits[i_q]) > 1:
             #     import pdb; pdb.set_trace()
 
-            if len(lower_limits[i_q]) > 0 and i_q == 0:
-                if lower_limits[i_q][0] < upper_limits[i_q][0]:
-                    del lower_limits[i_q][0]
-                else:
+            # if int(mass) == 725 and parity == 'H' and width == '25' and i_q == 0:
+            #     import pdb; pdb.set_trace()
+            # print lower_limits, i_q
+
+            if i_q == 0:
+                if len(lower_limits) < i_q + 1:
                     import pdb; pdb.set_trace()
+                elif len(lower_limits[i_q]) > 0:
+                    if lower_limits[i_q][0] < upper_limits[i_q][0]:
+                        del lower_limits[i_q][0]
+                    else:
+                        pass
+
 
             # if int(mass) == 550 and int(width[0]) == 5:
             #     import pdb; pdb.set_trace()
