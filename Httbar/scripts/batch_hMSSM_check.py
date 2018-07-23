@@ -55,6 +55,10 @@ for entry in mapping.itervalues():
 			continue
 
 		limits = rfile.Get('limit')
+		if not limits:
+			print 'Point %s not computed successfully! (limit tree missing)' % (key,)
+			summary[key] = {}
+			continue
 		print 'File', rname
 		upper_limits, lower_limits = andrey_harvest_and_outlier_removal(
 			#harvest_and_outlier_removal(
