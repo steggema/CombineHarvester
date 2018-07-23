@@ -33,7 +33,7 @@ executable = %s
 Output = con_{idx}.stdout
 Error = con_{idx}.stderr
 Log = con_{idx}.log
-Arguments = {jobid} {ma} {tanb} {sushi} {blind}
+Arguments = {jobid} {ma} {tanb} {sushi} {blind} --runScan --twoPars --barlowBeeston
 Queue
 '''.format(
 				idx=idx,
