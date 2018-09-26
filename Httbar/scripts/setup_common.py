@@ -31,7 +31,7 @@ common_theory_uncs = [
 ]
 
 ll_theory_uncs = [
-	LnNUnc(['ZJets'], 'CMS_httbar_ZNormll_13TeV', 1.5),
+	LnNUnc(['ZJets'], 'CMS_httbar_ZNormll_13TeV', 1.3),
 	]
 
 lj_theory_uncs = [
@@ -66,6 +66,9 @@ common_tt_shape_uncs = [
 	'QCDscaleFSR_TT', 'Hdamp_TT', 
 	'TMass', 'QCDscaleMERenorm_TT', 'QCDscaleMEFactor_TT',
 	'CMS_TopPt1_TT', 'CMS_TopPt2_TT',
+]
+
+jet_uncertainties = [
 	#JES
 	'CMS_scale_j_13TeV_AbsoluteStat',
 	'CMS_scale_j_13TeV_AbsoluteScale',
@@ -91,8 +94,11 @@ common_tt_shape_uncs = [
 	#MET
 	'CMS_METunclustered_13TeV'
 ]
+
+common_tt_shape_uncs += jet_uncertainties
+
 ll_shape_uncertainties_tt = []
-lj_shape_uncertainties_tt = [] #missing top pt! #should also LJ remove it?
+lj_shape_uncertainties_tt = []
 #ll/TT_QCDscaleMEFactor_ggH-sgnDown
 #ll/TT_QCDscaleMERenorm_ggH-sgnDown
 
@@ -108,6 +114,8 @@ signal_shape_uncertainties = [
 	'QCDscaleMERenorm_ggH-sgn',
 	'QCDscaleMEFactor_ggH-sgn',
 ]
+
+signal_shape_uncertainties += jet_uncertainties
 
 #Bin by bin template
 ll_bbb_template = 'TT_CMS_httbar_%s_MCstatBin'
@@ -195,13 +203,17 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 	#SIGNAL SHAPE UNCERTAINTIES
 	for unc_name in signal_shape_uncertainties:
 		info = unc_name.split('_')[1]
-		parity, proctype = tuple(info.split('-'))
-		cb.cp().process(
-			[i for i in procs['sig'] if i.startswith(parity) and ('-%s-' % proctype) in i]
-			).AddSyst(
-			cb, unc_name, 'shape',
-			ch.SystMap('bin_id')(cat_ids, 1.)
-			)
+		try:
+			parity, proctype = tuple(info.split('-'))
+			cb.cp().process(
+				[i for i in procs['sig'] if i.startswith(parity) and ('-%s-' % proctype) in i]
+				).AddSyst(
+				cb, unc_name, 'shape',
+				ch.SystMap('bin_id')(cat_ids, 1.)
+				)
+		except ValueError:
+			cb.cp().process(procs['sig']).AddSyst(
+			cb, unc_name, 'shape', ch.SystMap('bin_id')(cat_ids,1.))
 
 def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses=['400', '500', '600', '750'], addBBB=True):
 	print '\n\n------------   L+J LIMIT SETTING   ------------'
@@ -299,13 +311,17 @@ def prepareLeptonPlusJets(cb, cat_mapping, procs, in_file, channel='cmb', masses
 	#SIGNAL SHAPE UNCERTAINTIES
 	for unc_name in signal_shape_uncertainties:
 		info = unc_name.split('_')[1]
-		parity, proctype = tuple(info.split('-'))
-		cb.cp().process(
-			[i for i in procs['sig'] if i.startswith(parity) and ('-%s-' % proctype) in i]
-			).AddSyst(
-			cb, unc_name, 'shape',
-			ch.SystMap('bin_id')(cat_ids, 1.)
-			)
+		try:
+			parity, proctype = tuple(info.split('-'))
+			cb.cp().process(
+				[i for i in procs['sig'] if i.startswith(parity) and ('-%s-' % proctype) in i]
+				).AddSyst(
+				cb, unc_name, 'shape',
+				ch.SystMap('bin_id')(cat_ids, 1.)
+				)
+		except ValueError:
+			cb.cp().process(procs['sig']).AddSyst(
+			cb, unc_name, 'shape', ch.SystMap('bin_id')(cat_ids,1.))
 
 def addBinByBin(cb):
 	bbb = ch.BinByBinFactory().SetAddThreshold(0.).SetFixNorm(False).SetMergeThreshold(0.5)
