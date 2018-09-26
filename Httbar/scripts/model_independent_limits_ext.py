@@ -61,7 +61,7 @@ addenda = {
 	# 'mass' : r'\textbf{width}$\boldsymbol{_{\mathrm{\mathsf{%s}}} \mathsf{= %.1f}}$\textbf{\%% }',
 	'width': r'm$_{\mathrm{\mathsf{%s}}}$ = {%d}\,GeV',
 	# 'mass' : r'Width$_{\mathrm{\mathsf{%s}} \mathsf{= %.1f}}$\%%',
-	'mass' : r'$\Gamma$/m$_{\mathrm{\mathsf{%s}}}$ = {%.1f}\%%',
+	'mass' : r'$\Gamma_{\mathrm{\mathsf{%s}}}$/m$_{\mathrm{\mathsf{%s}}}$ = {%.1f}\%%',
 	}
 
 vartoadd = {
@@ -74,6 +74,9 @@ def make_plot(subset, xvar, maxg_values=None):
 		subset.sort(order=xvar)
 		print subset
 		print xvar
+
+		parity = list(set(subset['parity']))[0]
+
 		x_min = subset[xvar].min()
 		x_max = subset[xvar].max()	
 		y_min = min(subset['exp-2'].min(), subset['obs'].min())*0.8
@@ -122,7 +125,7 @@ def make_plot(subset, xvar, maxg_values=None):
 			# 		lw=0.
 			# 	), r'$\Gamma_\mathrm{t\bar t} > \Gamma_\mathrm{tot}$'))
 			# handles.append((mpatches.Patch(color='none', hatch='||', edgecolor='gray', linewidth=1.), mlines.Line2D([], [], color='gray', linestyle='-')), r'$\Gamma_\mathrm{t\bar t} > \Gamma_\mathrm{tot}$'))
-			handles.append((mpatches.Patch(facecolor='none', hatch='||', edgecolor='gray', linewidth=1.), r'$\Gamma_\mathrm{t\bar t} > \Gamma_\mathrm{tot}$'))
+			handles.append((mpatches.Patch(facecolor='none', hatch='||', edgecolor='gray', linewidth=1.), r'$\Gamma_\mathrm{\mathsf{%s}\rightarrow t\bar t} > \Gamma_\mathrm{\mathsf{%s}}$'%(parity, parity)))
 
 		handles.append(
 			# (mpatches.Patch(color=twosigma), r'$\mathsf{\pm}$2\,s.d.\ expected')
@@ -174,7 +177,6 @@ def make_plot(subset, xvar, maxg_values=None):
 		## 	xs, [0]*len(xs), [8, 6, 5, 4.3, 3.5, 3, 2, 1.5], 
 		## 	facecolor=obs_color, edgecolor='k', linewidth=1
 		## )
-		parity = list(set(subset['parity']))[0]
 		plt.xlabel(	
 			xlabels[xvar] % parity, fontsize=32, 
 			horizontalalignment='right', x=1.0, 
@@ -220,7 +222,7 @@ def make_plot(subset, xvar, maxg_values=None):
 		ret.append(
 			plt.text(
 			x_min+(x_max-x_min)*0.50, y_max-delta_y*.27,
-				addenda[xvar] % (parity, other_var),
+				addenda[xvar] % ((parity, other_var) if xvar == 'width' else (parity, parity, other_var) ),
 				 # +r'\textbf{95\% CL Excluded}:',
 			fontsize=29,
 			horizontalalignment='left'

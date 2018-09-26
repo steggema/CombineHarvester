@@ -76,8 +76,8 @@ for key, submit in block_map.iteritems():
             
             down_outlier_flag = False
             up_outlier_flag = False
-            cls_vals_plus_g = [(g, cls_val) for g, cls_val in cls_vals if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
-            cls_vals = [cls_val for _, cls_val in cls_vals_plus_g if cls_val >= 0. and cls_val != 0.5 and cls_val != 0.0]
+            cls_vals_plus_g = [(g, cls_val) for g, cls_val in cls_vals if cls_val >= 0. and abs(cls_val - 0.5)>0.001 and cls_val != 0.0]
+            cls_vals = [cls_val for _, cls_val in cls_vals_plus_g if cls_val >= 0. and abs(cls_val - 0.5)>0.001 and cls_val != 0.0]
             len_vals = len(cls_vals)
 
             for i_val, (g, cls_val) in enumerate(cls_vals_plus_g):
