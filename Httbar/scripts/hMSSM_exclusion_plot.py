@@ -112,8 +112,8 @@ for key in excluded:
 		if not m_ex: continue #if there are no points excluded everythins is fine
 		max_ex = max(m_ex)
 		m_nex = [j for i, j in notexc if i == mass]
-		if any(i < max_ex for i in m_nex):
-			raise RuntimeError('The tanb exclusion is not continuous for %s and m(A) = %d' % (key, mass))
+		# if any(i < max_ex for i in m_nex):
+		# 	raise RuntimeError('The tanb exclusion is not continuous for %s and m(A) = %d' % (key, mass))
 
 print 'The exclusions look OK, I can plot them!'
 
@@ -279,6 +279,9 @@ txt = plt.text(
     horizontalalignment='right'
     )
 
+import matplotlib.ticker as plticker
+loc = plticker.MultipleLocator(base=0.1) # this locator puts ticks at regular intervals
+ax.yaxis.set_minor_locator(loc)
 ax.tick_params(axis='both', labelsize=29, which='both')
 
 #plt.show()

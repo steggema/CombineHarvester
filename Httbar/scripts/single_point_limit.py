@@ -54,9 +54,9 @@ opts = ''
 if args.mergeLJ:
 	opts += "--channels=cmbLJ "
 if args.channels:
-	opts += "--channels={}".format(args.channels)
+	opts += "--channels={} ".format(args.channels)
 if args.ignore:
-	opts += "--ignore='%s'" % args.ignore
+	opts += "--ignore='%s' " % args.ignore
 if args.barlowBeeston:
 	opts += "--noBBB "
 syscall((
