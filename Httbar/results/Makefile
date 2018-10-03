@@ -1,4 +1,4 @@
-jobid=2017Nov16
+jobid=2018Jun25
 runmode=--run blind
 channel=cmb
 limitdir=output_$(channel)_$(jobid)
