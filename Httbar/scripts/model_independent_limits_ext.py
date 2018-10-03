@@ -17,6 +17,8 @@ import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 import matplotlib.ticker as ticker
 
+print 'Run with matplotlib > 2, e.g. by sourcing CMSSW_10_3_X'
+
 parser = ArgumentParser()
 parser.add_argument('input')
 args = parser.parse_args()
@@ -80,8 +82,9 @@ def make_plot(subset, xvar, maxg_values=None):
 		x_min = subset[xvar].min()
 		x_max = subset[xvar].max()	
 		y_min = min(subset['exp-2'].min(), subset['obs'].min())*0.8
-		y_max = max(subset['exp+2'].max(), subset['obs'].max())/0.7
-		y_leg_cutoff = min(y_max * 0.74, 3.) # reserve ~30% for legend
+		y_max = max(subset['exp+2'].max(), subset['obs'].max())/0.68
+		y_max = min(y_max, 3./0.7)
+		y_leg_cutoff = min( y_min + (y_max - y_min) * 0.68, 3.) # reserve ~30% for legend
 
 		# obs_color = (103./255., 203./255., 123./255., 0.4)
 		obs_color = (135./255., 206./255., 250./255., 0.5)
@@ -170,7 +173,8 @@ def make_plot(subset, xvar, maxg_values=None):
 			maxg_xvalues_todraw = [val[0]for val in maxg_values if val[1] < y_leg_cutoff]
 			maxg_values_todraw = [val[1] for val in maxg_values  if val[1] < y_leg_cutoff]
 			unphys_region = plt.plot(maxg_xvalues_todraw, maxg_values_todraw, color='gray', linestyle='-')
-			plt.fill_between(maxg_xvalues_todraw, maxg_values_todraw, [min(val+0.02*(y_max-y_min), y_leg_cutoff) for val in maxg_values_todraw], color='none', hatch='||', edgecolor='gray', linewidth=0.)
+			matplotlib.rcParams['hatch.linewidth'] = 1.2
+			plt.fill_between(maxg_xvalues_todraw, maxg_values_todraw, [min(val+0.02*(y_max-y_min), y_leg_cutoff) for val in maxg_values_todraw], facecolor='none', hatch='||', edgecolor='gray', linewidth=0.)
 
 		#Fake observed, just to check it works
 		## plt.fill_between(
@@ -221,7 +225,8 @@ def make_plot(subset, xvar, maxg_values=None):
 		other_var = list(set(subset[vartoadd[xvar]]))[0]
 		ret.append(
 			plt.text(
-			x_min+(x_max-x_min)*0.50, y_max-delta_y*.27,
+			# x_min+(x_max-x_min)*0.50, y_max-delta_y*.27,
+			x_min+(x_max-x_min)*0.50, y_max-delta_y*.286,
 				addenda[xvar] % ((parity, other_var) if xvar == 'width' else (parity, parity, other_var) ),
 				 # +r'\textbf{95\% CL Excluded}:',
 			fontsize=29,
@@ -232,7 +237,8 @@ def make_plot(subset, xvar, maxg_values=None):
 		#CMS blurb
 		plt.text(
 			x_min+(x_max-x_min)*0.00, y_max+0.025*delta_y,
-			r'''\textbf{CMS} \textit{Preliminary}''',
+			# r'''\textbf{CMS} \textit{Preliminary}''',
+			r'''\textbf{CMS}''',
 			fontsize=32
 			)
 		

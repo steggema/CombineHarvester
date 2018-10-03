@@ -205,7 +205,7 @@ plt.fill_between(
 )
 
 plt.xlabel(	
-	r'm$_{\mathrm{\mathsf{A}}}$\, (GeV)', fontsize=32, 
+	r'm$_{\mathrm{\mathsf{A}}}$\, [GeV]', fontsize=32, 
 	horizontalalignment='right', x=1.0, 
 )
 #by hand y label, in pyplot 1.4 it aligns properly, here not
@@ -261,7 +261,8 @@ plt.legend(
 #     )
 plt.text(
 	x_min+(x_max-x_min)*0.01, y_max+0.025*delta_y,
-	r'''\textbf{CMS} \textit{Preliminary}''',
+	# r'''\textbf{CMS} \textit{Preliminary}''',
+	r'''\textbf{CMS}''',
 	fontsize=32
 	)
 #legend title (again, due to version)
