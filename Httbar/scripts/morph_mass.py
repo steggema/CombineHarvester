@@ -79,7 +79,7 @@ print 'Output masses:', to_make
 print 'Available masses: ', available
 
 val2name = lambda x: "%s%s" % (str(x).replace('.','p').replace('p0',''),"pc")
-name2val = lambda x: float(x.replace('pc','').replace('p', '.').replace('checks_',''))
+name2val = lambda x: float(x.replace('pc','').replace('p', '.'))
 widths = args.widths.split(',')
 widths_vals = [name2val(i) for i in widths]
 
@@ -184,7 +184,6 @@ for channel in channels:
     h_names = set([key.GetName().replace(mass_id, 'M{MASS}') for key in tdir.GetListOfKeys() if mass_id in key.GetName()])		
     if args.nosystematics:
         h_names = [i for i in h_names if not (i.endswith('Up') or i.endswith('Down'))] #FIXME
-    h_names = [i for i in h_names if 'checks_' not in i]
     h_names = set([i for i in h_names if not i.endswith('_') and i.startswith('gg%s' % args.parity)])
     h_names = list(h_names)
     print 'Processing', len(h_names), 'different signal templates'
