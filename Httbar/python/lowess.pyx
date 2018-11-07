@@ -9,8 +9,7 @@ import numpy as np
 from numpy cimport float64_t 
 
 cimport cython
-from libc.math cimport sqrt
-
+from libc.math cimport sqrt, INFINITY, abs, isnan
 
 def lowess(x, y, bandwidth):
     """Smooth a function using LOWESS algorithm.
@@ -54,12 +53,15 @@ def lowess(x, y, bandwidth):
         # Negative weights are clipped.
         distances = np.abs(x[start:end] - x[i]) / bandwidth
         weights = (1 - distances**3)**3
-        weights[weights < 0.] = 0.
+        weights[(weights < 0.) | np.isnan(y[start:end]) | np.isinf(y[start:end])] = 0.
         
         # To simplify computation of mean values below, normalize
         # weights
         weights /= np.sum(weights)
         
+        #y copy
+        y_copy = np.copy(y[start:end])
+        y_copy[np.isnan(y_copy) | np.isinf(y[start:end])] = 0.
         
         # Perform linear fit to selected points.  The range is centered
         # at x[i] so that only the constant term needs to be computed.
@@ -68,14 +70,13 @@ def lowess(x, y, bandwidth):
         xFit = x[start:end] - x[i]
         
         meanX = np.dot(weights, xFit)
-        meanY = np.dot(weights, y[start:end])
+        meanY = np.dot(weights, y_copy)
         meanX2 = np.dot(weights, xFit**2)
-        meanXY = np.dot(weights, xFit * y[start:end])
+        meanXY = np.dot(weights, xFit * y_copy)
         
         smoothY[i] = (meanX2 * meanY - meanX * meanXY) / (meanX2 - meanX**2)
     
     return smoothY
-
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -158,6 +159,8 @@ def lowess2d(x, y, bandwidth):
             if distance2 > 1:
                 continue
             
+            if isnan(y_v[iCurrent]) or abs(y_v[iCurrent]) == INFINITY:
+                continue
             
             weight = (1 - sqrt(distance2)**3)**3
             
@@ -302,8 +305,10 @@ def lowess2d_grid(x0, x1, y, bandwidth):
                     
                     if distance2 > 1:
                         continue
-                    
-                    
+                                        
+                    if isnan(y_v[iCurrent_0, iCurrent_1]) or abs(y_v[iCurrent_0, iCurrent_1]) == INFINITY:
+                        continue
+            
                     weight = (1 - sqrt(distance2)**3)**3
                     
                     sumW += weight

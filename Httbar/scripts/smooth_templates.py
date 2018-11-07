@@ -33,7 +33,7 @@ class Reader:
     templates are expected to be unrolled into 1D.
     """
     
-    def __init__(self, src_file, channels, num_bins_angle=5, example='TT', epsilon=10**-7):
+    def __init__(self, src_file, channels, num_bins_angle=5, example='TT', epsilon=-1):
         
         self.src_file = src_file
         self.channels = channels
@@ -66,12 +66,16 @@ class Reader:
         """Convert unrolled ROOT histogram into NumPy representation."""
         
         counts_flat = np.empty((hist.GetNbinsX(), 2))
-        
+        if self.epsilon == -1:
+            self.epsilon = 1.8*(hist.Integral()/hist.GetEntries())
+
         for i in range(len(counts_flat)):
             if hist.GetBinError(i + 1) == 0 and hist.GetBinContent(i + 1) != 0:
                 raise RuntimeError('This will create problems downstream')
-            counts_flat[i, 0] = hist.GetBinContent(i + 1)
-            counts_flat[i, 1] = hist.GetBinError(i + 1) ** 2 + self.epsilon            
+            counts_flat[i, 0] = hist.GetBinContent(i + 1) #\
+            #if hist.GetBinContent(i + 1) else self.epsilon/10
+            counts_flat[i, 1] = hist.GetBinError(i + 1) ** 2 \
+               if hist.GetBinError(i + 1) else self.epsilon**2
         
         return counts_flat.reshape(self.num_bins_angle, self.num_bins_mass, 2)
 
@@ -113,6 +117,8 @@ if __name__ == '__main__':
         50. : '50pc' , 
         }
 
+    h_angle = 5 #FIXME
+    h_mass  = 5
     sgn_template = 'gg%s_{}-%s-M%s' % (parity, width_mapping[width], mass)
     sgn_name_regex = re.compile(
         sgn_template.format(
@@ -145,7 +151,11 @@ if __name__ == '__main__':
     syst_names.append(('JER', 'CMS_res_j_13TeV'))
     syst_names.append(('METUncl', 'CMS_METunclustered_13TeV'))
     
-    channel_labels = {'mujets': r'$\mu + \mathrm{jets}$', 'ejets': r'$e + \mathrm{jets}$'}
+    channel_labels = {
+        'mujets': r'$\mu + \mathrm{jets}$', 
+        'ejets': r'$e + \mathrm{jets}$', 
+        'll' : r'\ell\ell',
+        }
     
     
     src_file = ROOT.TFile(args.input)
@@ -217,7 +227,7 @@ if __name__ == '__main__':
                 downRebinned=templates_syst['down'][sgn_type]
             )
             templates_smooth['up'], templates_smooth['down'] = smoother.smooth(
-                (args.h_angle * reader.num_bins_angle, args.h_mass * reader.num_bins_mass)
+                (h_angle * reader.num_bins_angle, h_mass * reader.num_bins_mass)
             )
             
             # Add smoothed variations to output directory
@@ -247,8 +257,13 @@ if __name__ == '__main__':
                     (templates_nominal[sgn_type][ichannel, ..., 0]+10**-7) - 1
 
                 input_deviation = np.reshape(input_deviation, -1)
+                nominal_zeros = (templates_nominal[sgn_type][ichannel, ..., 0] == 0).ravel()
+                shifted_zeros = (templates_syst[direction][sgn_type][ichannel, ..., 0] == 0).ravel()
+                zero_over_zero, = np.where((nominal_zeros & shifted_zeros))
+                infs, = np.where((nominal_zeros & np.invert(shifted_zeros)))
+                clipped, = np.where((input_deviation > 3) & np.invert(nominal_zeros & np.invert(shifted_zeros)))
                 #clip and set to zero
-                input_deviation[input_deviation > 10**5] = 0
+                input_deviation[input_deviation > 3] = 0
                 smooth_deviation = np.reshape(smooth_deviation, -1)
                 
                 chi2 = np.sum(
@@ -272,7 +287,18 @@ if __name__ == '__main__':
                     x, list(smooth_deviation) + [0], where='post',
                     solid_joinstyle='miter', color='r', label='Smoothed'
                 )
-                
+                axes.plot(
+                    zero_over_zero+0.5, np.ones(zero_over_zero.shape[0])*0.05, 'ro', 
+                    markersize=4, markeredgewidth=0.0, label='0/0')
+                axes.plot(
+                    infs+0.5, np.ones(infs.shape[0])*0.05, 'bo', markersize=4, 
+                    markeredgewidth=0.0, label='infs'
+                    )
+                axes.plot(
+                    clipped+0.5, np.ones(clipped.shape[0])*0.05, 'go', markersize=4,
+                    markeredgewidth=0.0, label='clipped'
+                    )
+
                 axes.axhline(0., color='gray', lw=0.8, ls='dashed')
                 
                 for i in range(reader.num_bins_angle - 1):
@@ -292,7 +318,7 @@ if __name__ == '__main__':
                     0., 1.003,
                     '{}, {} ({}), {}, $h = ({:g}, {:g})$, $\\chi^2 = {:.2f}$'.format(
                         sgn_type_display, syst_display_name, direction,
-                        channel_labels[channels[ichannel]], args.h_angle, args.h_mass,
+                        channel_labels[channels[ichannel]], h_angle, h_mass,
                         chi2
                     ),
                     ha='left', va='bottom', transform=axes.transAxes

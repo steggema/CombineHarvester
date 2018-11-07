@@ -9,7 +9,7 @@ import numpy as np
 import ROOT
 
 from CombineHarvester.Httbar.lowess import lowess, lowess2d, lowess2d_grid
-
+from pdb import set_trace
 
 class Reader:
     """Facilitates reading of files with histograms.
@@ -411,6 +411,8 @@ class Smoother:
         # is chosen in such a way that obtained deviation corresponds to
         # the up variation.  The shape of produced array is
         # (nBinsAngle, nBinsMass).
+        ##if (np.sum(nominal[..., 0], axis=0) == 0).any():
+        ##    set_trace()
         self.averageDeviation = (np.sum(up[..., 0], axis=0) - np.sum(down[..., 0], axis=0)) / 2 / \
             np.sum(nominal[..., 0], axis=0)
         
@@ -475,7 +477,9 @@ class Smoother:
             self._apply_deviation(self.smoothAverageDeviation, scaleFactor=self.scaleFactors[0]),
             self._apply_deviation(self.smoothAverageDeviation, scaleFactor=self.scaleFactors[1])
         )
-        
+        if np.isnan(smoothTemplates[0]).any() or np.isinf(smoothTemplates[0]).any():
+            set_trace()
+            
         if rebin:
             return (
                 self.rebinner(smoothTemplates[0]),
@@ -558,6 +562,7 @@ class Smoother:
             unc2 = self.systsRebinned[iDirection][..., 1] + systSmoothRebinned[..., 1]
             
             # Computed using analytical results
+            
             a[iDirection] = np.sum(absDeviation * absSmoothDeviation / unc2)
             b[iDirection] = np.sum(absSmoothDeviation**2 / unc2)
         
@@ -586,7 +591,7 @@ class Smoother:
         half-sizes of the windows, expressed in the number of bins, used
         along the dimensions of the angle and mass (in this order).
         """
-        
+        #set_trace()
         smoothAverageDeviation = lowess2d_grid(
             np.arange(0., self.nominal.shape[1], dtype=np.float64),
             np.arange(0., self.nominal.shape[2], dtype=np.float64),
