@@ -259,11 +259,15 @@ plt.legend(
 # \textit{Preliminary}''',
 #     fontsize=32
 #     )
+
+supplementary = False
+
 plt.text(
 	x_min+(x_max-x_min)*0.01, y_max+0.025*delta_y,
-	# r'''\textbf{CMS} \textit{Preliminary}''',
-	r'''\textbf{CMS}''',
-	fontsize=32
+	r'''\textbf{CMS} \textit{Supplementary}''' if supplementary else r'''\textbf{CMS}''',
+	fontsize=30 if supplementary else 32
+	# r'''\textbf{CMS}''',
+	# fontsize=32
 	)
 #legend title (again, due to version)
 plt.text(
@@ -276,7 +280,7 @@ plt.text(
 txt = plt.text(
     x_max-(x_max-x_min)*0.01, y_max+0.025*delta_y,
     r'35.9 fb$^{\mathsf{-1}}$ (13 TeV)',
-    fontsize=32,
+    fontsize=30 if supplementary else 32,
     horizontalalignment='right'
     )
 
