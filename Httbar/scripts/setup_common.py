@@ -57,7 +57,12 @@ lj_by_lepton_uncs = {
 	'el' : ['CMS_eff_trigger_e', 'CMS_eff_e']
 }
 lj_shape_uncs = []
-ll_shape_uncs = ['CMS_eff_trigger_l', 'CMS_eff_e', 'CMS_eff_m']
+ll_shape_uncs = [
+	#'CMS_eff_trigger_l', 
+	'CMS_eff_trigger_m', 
+	'CMS_eff_trigger_e', 
+	'CMS_eff_e', 
+	'CMS_eff_m']
 
 #tt shapes
 common_tt_shape_uncs = [
@@ -184,9 +189,10 @@ def prepareDiLepton(cb, cat_mapping, procs, in_file, masses=['400', '500', '600'
 
 	# GENERIC SHAPE UNCERTAINTIES
 	for shape_uncertainty in common_shape_uncs+ll_shape_uncs:
+		value = 1./1.4142 if shape_uncertainty.startswith('CMS_eff_trigger') else 1. 
 		cb.cp().process(
 			procs['bkg'] + procs['sig']
-			).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, 1.))
+			).AddSyst(cb, shape_uncertainty, 'shape', ch.SystMap('bin_id')(cat_ids, value))
 
 	# SPECIFIC SHAPE UNCERTAINTIES
 	for shape_uncertainty in common_tt_shape_uncs+ll_shape_uncertainties_tt:
