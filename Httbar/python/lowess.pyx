@@ -9,9 +9,10 @@ import numpy as np
 from numpy cimport float64_t 
 
 cimport cython
-from libc.math cimport sqrt, INFINITY, abs, isnan
+from libc.math cimport sqrt
 
-def lowess(x, y, bandwidth):
+
+def lowess(x, y, bandwidth, weights=None):
     """Smooth a function using LOWESS algorithm.
     
     Parameters:
@@ -19,6 +20,9 @@ def lowess(x, y, bandwidth):
         y:  Corresponding values of the function.
         bandwidth: Bandwith that defines the size of the neighbourhood
             to be considered for each point.
+        weights:  Additional weights for LOWESS fit.  They should
+            normally be inversely proportional to squared uncertainties
+            associated with each point.
     
     Return value:
         An array with results of the smoothing at the same x coordinates
@@ -38,7 +42,8 @@ def lowess(x, y, bandwidth):
     """
     
     x = np.asarray(x)
-    smoothY = np.zeros(len(y))
+    smooth_y = np.zeros(len(y))
+    external_weights = np.asarray(weights) if weights is not None else np.ones(len(x))
     
     for i in range(len(y)):
         
@@ -52,36 +57,35 @@ def lowess(x, y, bandwidth):
         # the tricube function of the distance, in units of bandwidth.
         # Negative weights are clipped.
         distances = np.abs(x[start:end] - x[i]) / bandwidth
-        weights = (1 - distances**3)**3
-        weights[(weights < 0.) | np.isnan(y[start:end]) | np.isinf(y[start:end])] = 0.
+        weights = (1 - distances ** 3) ** 3
+        weights *= external_weights[start:end]
+        weights[weights < 0.] = 0.
         
         # To simplify computation of mean values below, normalize
         # weights
         weights /= np.sum(weights)
         
-        #y copy
-        y_copy = np.copy(y[start:end])
-        y_copy[np.isnan(y_copy) | np.isinf(y[start:end])] = 0.
         
         # Perform linear fit to selected points.  The range is centered
         # at x[i] so that only the constant term needs to be computed.
         # This also improves numerical stability.  The computation is
         # carried using an analytic formula.
-        xFit = x[start:end] - x[i]
+        x_fit = x[start:end] - x[i]
         
-        meanX = np.dot(weights, xFit)
-        meanY = np.dot(weights, y_copy)
-        meanX2 = np.dot(weights, xFit**2)
-        meanXY = np.dot(weights, xFit * y_copy)
+        mean_x = np.dot(weights, x_fit)
+        mean_y = np.dot(weights, y[start:end])
+        mean_x2 = np.dot(weights, x_fit ** 2)
+        mean_xy = np.dot(weights, x_fit * y[start:end])
         
-        smoothY[i] = (meanX2 * meanY - meanX * meanXY) / (meanX2 - meanX**2)
+        smooth_y[i] = (mean_x2 * mean_y - mean_x * mean_xy) / (mean_x2 - mean_x ** 2)
     
-    return smoothY
+    return smooth_y
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def lowess2d(x, y, bandwidth):
+def lowess2d(x, y, bandwidth, weights=None):
     """Smooth a function of 2D data using LOWESS algorithm.
     
     Arguments:
@@ -91,6 +95,9 @@ def lowess2d(x, y, bandwidth):
             Input values of the fuction evaluated at each point.
         bandwidth: array_like of length 2
             Bandwidths to be used for each coordinate.
+        weights:  Additional weights for LOWESS fit.  They should
+            normally be inversely proportional to squared uncertainties
+            associated with each point.
     
     Return value:
         A NumPy array with smoothed values of the function.
@@ -105,73 +112,81 @@ def lowess2d(x, y, bandwidth):
     x_np = np.asarray(x, dtype=np.float64)
     y_np = np.asarray(y, dtype=np.float64)
     
+    if weights is None:
+        external_weights_np = np.ones(len(x), dtype=np.float64)
+    else:
+        external_weights_np = np.asarray(weights, dtype=np.float64)
+    
     if x_np.shape[1] != 2:
         raise RuntimeError('Size of array x along axis 1 must be 2.')
     
     if x_np.shape[0] != y_np.shape[0]:
         raise RuntimeError('Dimensions of arrays x and y do not match.')
     
+    if x_np.shape[0] != external_weights_np.shape[0]:
+        raise RuntimeError('Dimensions of arrays x and weights do not match.')
+    
     cdef float64_t [:, :] x_v = x_np
     cdef float64_t [:] y_v = y_np
+    cdef float64_t [:] external_weights_v = external_weights_np
     
     cdef float64_t h[2]
     h[0], h[1] = bandwidth
     
     
-    ySmooth_np = np.empty_like(y_np)
-    cdef float64_t [:] ySmooth = ySmooth_np
+    y_smooth_np = np.empty_like(y_np)
+    cdef float64_t [:] y_smooth = y_smooth_np
     
     cdef:
-        Py_ssize_t nPoints = len(y)
-        Py_ssize_t iCentral, iCurrent, d
-        float64_t xTrans[2]
+        Py_ssize_t num_points = len(y)
+        Py_ssize_t i_central, i_current, d
+        float64_t x_trans[2]
         float64_t distance2, weight, det
-        float64_t sumW, sumWX0X1, sumWY
-        float64_t sumWX[2]
-        float64_t sumWXQ[2]
-        float64_t sumWXY[2]
+        float64_t sum_w, sum_wx0x1, sum_wy
+        float64_t sum_wx[2]
+        float64_t sum_wxq[2]  # q for squared x
+        float64_t sum_wxy[2]
         float64_t m[3][3]
     
     
     # Loop over given points
-    for iCentral in range(nPoints):
+    for i_central in range(num_points):
         
-        sumW = sumWX0X1 = sumWY = 0.
+        sum_w = sum_wx0x1 = sum_wy = 0.
         
         for d in range(2):
-            sumWX[d] = 0.
-            sumWXQ[d] = 0.
-            sumWXY[d] = 0.
+            sum_wx[d] = 0.
+            sum_wxq[d] = 0.
+            sum_wxy[d] = 0.
         
         
         # Compute various weighted sums looping over all points
-        for iCurrent in range(nPoints):
+        for i_current in range(num_points):
             
             # Centre x coordinates at the current point and express them
             # in units of bandwidths along each axis.  The centring will
             # allow to compute only one of the three parameters defining
             # a plane.
             for d in range(2):
-                xTrans[d] = (x_v[iCurrent, d] - x_v[iCentral, d]) / h[d]
+                x_trans[d] = (x_v[i_current, d] - x_v[i_central, d]) / h[d]
             
-            distance2 = xTrans[0]**2 + xTrans[1]**2
+            distance2 = x_trans[0] ** 2 + x_trans[1] ** 2
             
             if distance2 > 1:
                 continue
             
-            if isnan(y_v[iCurrent]) or abs(y_v[iCurrent]) == INFINITY:
-                continue
             
-            weight = (1 - sqrt(distance2)**3)**3
+            weight = (1 - sqrt(distance2) ** 3) ** 3
+            weight *= external_weights_v[i_current]
             
-            sumW += weight
-            sumWX0X1 += weight * xTrans[0] * xTrans[1]
-            sumWY += weight * y_v[iCurrent]
+            sum_w += weight
+            sum_wx0x1 += weight * x_trans[0] * x_trans[1]
+            sum_wy += weight * y_v[i_current]
             
             for d in range(2):
-                sumWX[d] += weight * xTrans[d]
-                sumWXQ[d] += weight * xTrans[d]**2
-                sumWXY[d] += weight * xTrans[d] * y_v[iCurrent]
+                sum_wx[d] += weight * x_trans[d]
+                sum_wxq[d] += weight * x_trans[d] ** 2
+                sum_wxy[d] += weight * x_trans[d] * y_v[i_current]
         
         
         # Set smoothed y at the current point to the constant term in
@@ -180,29 +195,29 @@ def lowess2d(x, y, bandwidth):
         # system of linear equations for parameters of the plane is
         # solved using Cramer's rule.
         m[0][0] = 1.
-        m[1][1] = sumWXQ[0] / sumW
-        m[2][2] = sumWXQ[1] / sumW
-        m[0][1] = m[1][0] = sumWX[0] / sumW
-        m[0][2] = m[2][0] = sumWX[1] / sumW
-        m[1][2] = m[2][1] = sumWX0X1 / sumW
+        m[1][1] = sum_wxq[0] / sum_w
+        m[2][2] = sum_wxq[1] / sum_w
+        m[0][1] = m[1][0] = sum_wx[0] / sum_w
+        m[0][2] = m[2][0] = sum_wx[1] / sum_w
+        m[1][2] = m[2][1] = sum_wx0x1 / sum_w
         
         det = determinant_3x3(m)
         
-        m[0][0] = sumWY / sumW
-        m[1][0] = sumWXY[0] / sumW
-        m[2][0] = sumWXY[1] / sumW
+        m[0][0] = sum_wy / sum_w
+        m[1][0] = sum_wxy[0] / sum_w
+        m[2][0] = sum_wxy[1] / sum_w
         
-        ySmooth[iCentral] = determinant_3x3(m) / det
+        y_smooth[i_central] = determinant_3x3(m) / det
     
     
-    return ySmooth_np
+    return y_smooth_np
 
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def lowess2d_grid(x0, x1, y, bandwidth):
+def lowess2d_grid(x0, x1, y, bandwidth, weights=None):
     """Smooth a function of 2D data using LOWESS algorithm.
     
     Input values for the function are given on a grid.
@@ -215,6 +230,9 @@ def lowess2d_grid(x0, x1, y, bandwidth):
             the grid.  Axis 0 corresponds to x0, axis 1 to x1.
         bandwidth: array_like of length 2
             Bandwidths to be used for each coordinate.
+        weights:  Additional weights for LOWESS fit.  They should
+            normally be inversely proportional to squared uncertainties
+            associated with each point.
     
     Return value:
         A NumPy array with smoothed values of the function.
@@ -229,96 +247,100 @@ def lowess2d_grid(x0, x1, y, bandwidth):
     x0_np = np.asarray(x0, dtype=np.float64)
     x1_np = np.asarray(x1, dtype=np.float64)
     y_np = np.asarray(y, dtype=np.float64)
+    external_weights_np = np.asarray(weights, dtype=np.float64)
     
     if y_np.shape[0] != x0_np.shape[0] or y_np.shape[1] != x1_np.shape[0]:
-        raise RuntimeError('Dimenstions of array y do not match those of x0 and x1')
+        raise RuntimeError('Dimenstions of array y do not match those of x0 and x1.')
+    
+    if y_np.shape != external_weights_np.shape:
+        raise RuntimeError('Dimenstions of arrays y and weights do not match.')
     
     cdef float64_t [:] x0_v = x0_np
     cdef float64_t [:] x1_v = x1_np
     cdef float64_t [:, :] y_v = y_np
+    cdef float64_t [:, :] external_weights_v = external_weights_np
     
     cdef float64_t h[2]
     h[0] = bandwidth[0]
     h[1] = bandwidth[1]
     
     
-    ySmooth_np = np.empty_like(y_np)
-    cdef float64_t [:,:] ySmooth = ySmooth_np
+    y_smooth_np = np.empty_like(y_np)
+    cdef float64_t [:,:] y_smooth = y_smooth_np
     
     cdef Py_ssize_t n[2]
     n[0] = y_np.shape[0]
     n[1] = y_np.shape[1]
     
     cdef:
-        Py_ssize_t iCentral_0
-        Py_ssize_t iCentral_1
-        Py_ssize_t iStart[2]
-        Py_ssize_t iEnd[2]
-        Py_ssize_t iCurrent_0
-        Py_ssize_t iCurrent_1
+        Py_ssize_t i_central_0
+        Py_ssize_t i_central_1
+        Py_ssize_t i_start[2]
+        Py_ssize_t i_end[2]
+        Py_ssize_t i_current_0
+        Py_ssize_t i_current_1
         int d
         
-        float64_t xTrans[2]
+        float64_t x_trans[2]
         float64_t distance2, weight, det
         
-        float64_t sumW, sumWX0X1, sumWY
-        float64_t sumWX[2]
-        float64_t sumWXQ[2]
-        float64_t sumWXY[2]
+        float64_t sum_w, sum_wx0x1, sum_wy
+        float64_t sum_wx[2]
+        float64_t sum_wxq[2]  # q for squared x
+        float64_t sum_wxy[2]
         float64_t m[3][3]
     
     
-    for iCentral_0 in range(n[0]):
+    for i_central_0 in range(n[0]):
         
         # The window along the first coordinate around the current
         # point.  Points with end indices are not included.
-        iStart[0] = upper_bound(x0_v, 0, iCentral_0, x0_v[iCentral_0] - h[0])
-        iEnd[0] = upper_bound(x0_v, iCentral_0, n[0], x0_v[iCentral_0] + h[0])
+        i_start[0] = upper_bound(x0_v, 0, i_central_0, x0_v[i_central_0] - h[0])
+        i_end[0] = upper_bound(x0_v, i_central_0, n[0], x0_v[i_central_0] + h[0])
         
-        for iCentral_1 in range(n[1]):
+        for i_central_1 in range(n[1]):
             
             # The window along the second coordinate
-            iStart[1] = upper_bound(x1_v, 0, iCentral_1, x1_v[iCentral_1] - h[1])
-            iEnd[1] = upper_bound(x1_v, iCentral_1, n[1], x1_v[iCentral_1] + h[1])
+            i_start[1] = upper_bound(x1_v, 0, i_central_1, x1_v[i_central_1] - h[1])
+            i_end[1] = upper_bound(x1_v, i_central_1, n[1], x1_v[i_central_1] + h[1])
             
             
-            sumW = sumWX0X1 = sumWY = 0.
+            sum_w = sum_wx0x1 = sum_wy = 0.
             
             for d in range(2):
-                sumWX[d] = 0.
-                sumWXQ[d] = 0.
-                sumWXY[d] = 0.
+                sum_wx[d] = 0.
+                sum_wxq[d] = 0.
+                sum_wxy[d] = 0.
             
             # Loop over points included in the 2D window and compute
             # weighted sums
-            for iCurrent_0 in range(iStart[0], iEnd[0]):
-                for iCurrent_1 in range(iStart[1], iEnd[1]):
+            for i_current_0 in range(i_start[0], i_end[0]):
+                for i_current_1 in range(i_start[1], i_end[1]):
                     
                     # Centre x coordinates at the current point and
                     # express them in units of bandwidths along each
                     # axis.  The centring will allow to compute only one
                     # of the three parameters defining a plane.
-                    xTrans[0] = (x0_v[iCurrent_0] - x0_v[iCentral_0]) / h[0]
-                    xTrans[1] = (x1_v[iCurrent_1] - x1_v[iCentral_1]) / h[1]
+                    x_trans[0] = (x0_v[i_current_0] - x0_v[i_central_0]) / h[0]
+                    x_trans[1] = (x1_v[i_current_1] - x1_v[i_central_1]) / h[1]
                     
-                    distance2 = xTrans[0]**2 + xTrans[1]**2
+                    distance2 = x_trans[0] ** 2 + x_trans[1] ** 2
                     
                     if distance2 > 1:
                         continue
-                                        
-                    if isnan(y_v[iCurrent_0, iCurrent_1]) or abs(y_v[iCurrent_0, iCurrent_1]) == INFINITY:
-                        continue
-            
-                    weight = (1 - sqrt(distance2)**3)**3
                     
-                    sumW += weight
-                    sumWX0X1 += weight * xTrans[0] * xTrans[1]
-                    sumWY += weight * y_v[iCurrent_0, iCurrent_1]
+                    
+                    weight = (1 - sqrt(distance2) ** 3) ** 3
+                    weight *= external_weights_v[i_current_0, i_current_1]
+                    
+                    sum_w += weight
+                    sum_wx0x1 += weight * x_trans[0] * x_trans[1]
+                    sum_wy += weight * y_v[i_current_0, i_current_1]
                     
                     for d in range(2):
-                        sumWX[d] += weight * xTrans[d]
-                        sumWXQ[d] += weight * xTrans[d]**2
-                        sumWXY[d] += weight * xTrans[d] * y_v[iCurrent_0, iCurrent_1]
+                        sum_wx[d] += weight * x_trans[d]
+                        sum_wxq[d] += weight * x_trans[d] ** 2
+                        sum_wxy[d] += weight * x_trans[d] * y_v[i_current_0, i_current_1]
             
             
             # Set smoothed y at the current point to the constant term
@@ -327,21 +349,21 @@ def lowess2d_grid(x0, x1, y, bandwidth):
             # resulting system of linear equations for parameters of the
             # plane is solved using Cramer's rule.
             m[0][0] = 1.
-            m[1][1] = sumWXQ[0] / sumW
-            m[2][2] = sumWXQ[1] / sumW
-            m[0][1] = m[1][0] = sumWX[0] / sumW
-            m[0][2] = m[2][0] = sumWX[1] / sumW
-            m[1][2] = m[2][1] = sumWX0X1 / sumW
+            m[1][1] = sum_wxq[0] / sum_w
+            m[2][2] = sum_wxq[1] / sum_w
+            m[0][1] = m[1][0] = sum_wx[0] / sum_w
+            m[0][2] = m[2][0] = sum_wx[1] / sum_w
+            m[1][2] = m[2][1] = sum_wx0x1 / sum_w
             
             det = determinant_3x3(m)
             
-            m[0][0] = sumWY / sumW
-            m[1][0] = sumWXY[0] / sumW
-            m[2][0] = sumWXY[1] / sumW
+            m[0][0] = sum_wy / sum_w
+            m[1][0] = sum_wxy[0] / sum_w
+            m[2][0] = sum_wxy[1] / sum_w
             
-            ySmooth[iCentral_0, iCentral_1] = determinant_3x3(m) / det
+            y_smooth[i_central_0, i_central_1] = determinant_3x3(m) / det
     
-    return ySmooth_np
+    return y_smooth_np
 
 
 
