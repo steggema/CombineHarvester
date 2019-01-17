@@ -1,4 +1,7 @@
 #! /bin/env python
+
+# pylint: disable=W0312,C0330
+
 import math
 from argparse import ArgumentParser
 from pdb import set_trace
@@ -278,6 +281,18 @@ for parity in ['A', 'H']:
 		if not subset.size:
 			print 'No subset', parity, width, 'continuing'
 
+		# if parity == 'A' and width in [10., 15., 20., 25.]:
+		# 	for subsubset in subset:
+		# 		# Crazy hack, FIXME
+		# 		# For values of width < 10, the observed upper limits rather coincide
+		# 		# with the 2nd upper limits for higher masses, so we align them
+		# 		# here explicitly
+		# 		# set_trace()
+		# 		if (width == 10. and subsubset[1] <= 740) or (width >= 10.and subsubset[1] <= 725):
+		# 			subsubset[3+12] = subsubset[3]
+		# 			subsubset[3+6] = np.nan
+		# 			subsubset[3] = np.nan
+
 		# maxg_values = np.empty_like(masses, dtype=float)
 		
 		# for i in range(len(masses)):
@@ -308,6 +323,9 @@ for parity in ['A', 'H']:
 			]
 		if not subset.size:
 			print 'No subset', parity, mass, 'continuing'
+			continue
+		if mass == 735 and parity=='H':
+			set_trace()
 
 		if mass == 750:
 			for subsubset in subset:
@@ -453,4 +471,3 @@ for parity in ['A', 'H']:
 	# 		bbox_inches='tight'
 	# 	)
 	# 	plt.clf()
-
