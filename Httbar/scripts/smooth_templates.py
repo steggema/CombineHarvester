@@ -136,9 +136,27 @@ if __name__ == '__main__':
             try:
                 bandwidth = bandwidths[sgn_nominal_name, syst_name]
             except KeyError:
-                raise KeyError('No bandwidth found for template "{}" variation "{}".'.format(
-                    sgn_nominal_name, syst_name
-                ))
+                sgn_name_regex = re.compile(
+                    '(gg[AH]_(pos|neg)-(sgn|int)-(.+)pc-M(.+))'
+                )
+                match = sgn_name_regex.match(sgn_nominal_name)
+                width_old = match.group(4)
+                width = float(width_old.replace('p', '.'))
+                av_widths = [2.5, 5, 10, 25, 50]
+                if width not in av_widths:
+                    width = [w for w in av_widths if w>width][0] # first item larger than width under consideration
+                mass_old = match.group(5)
+                mass = int(match.group(5))
+                av_masses = [400, 500, 600, 750]
+                if mass not in av_masses:
+                    mass = [m for m in av_masses if m - mass > -50][0] # roughly closest mass
+                sgn_name_new = sgn_nominal_name.replace(width_old, str(width).replace('.', 'p')).replace(mass_old, str(mass))
+                try:
+                    bandwidth = bandwidths[sgn_name_new, syst_name]
+                except KeyError:
+                    raise KeyError('No bandwidth found for template "{}" variation "{}".'.format(
+                        sgn_nominal_name, syst_name
+                    ))
             
             
             # Construct smoothed variations
