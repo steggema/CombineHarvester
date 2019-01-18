@@ -32,6 +32,7 @@ parser.add_argument('--kfactor', default='$CMSSW_BASE/src/CombineHarvester/Httba
 parser.add_argument('--runScan', action='store_true', help='run scan of AsymptoticLimits instead of limit only')
 parser.add_argument('--twoPars', action='store_true', help='add both regular signal strength and coupling modifier to model')
 parser.add_argument('--barlowBeeston', action='store_true', help='use Barlow-Beeston instead of separate MC statistical uncertainties')
+parser.add_argument('--significance', action='store_true', help='calculate significances')
 args = parser.parse_args()
 
 val2name = lambda x: str(x).replace('.','p').replace('p0','')
@@ -118,6 +119,8 @@ else:
 			'hadd {par}_{m}_{wid}_limits_gathered.root {par}_{wid}/{m}/higgsCombine.limit*POINT*AsymptoticLimits*.root'.format(
 			par=args.parity, wid=val2name(args.width), m=args.mass)
 			))
+if args.significance:
+	syscall('significances.py {d}/{m}/workspace.root {par}_{m}_{wid}_sig.pynb {par} {m} {wid}'.format(d='_'.join([args.parity, val2name(args.width)]), par=args.parity, wid=val2name(args.width), m=args.mass))
 
 
 if not args.keep:
