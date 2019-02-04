@@ -40,7 +40,7 @@ filename = args.filename
 syscall('combine {} -M Significance --rMax=3. --cminPreScan --setParameters r=1.0 --freezeParameters r --redefineSignalPOIs g --X-rtd MINIMIZER_analytic -n g_floating'.format(filename))
 sig_g = get_sig_from_file('higgsCombineg_floating.Significance.mH120.root')
 
-syscall('combine {} -M Significance --rMax=3. --cminPreScan --setParameters r=1.0 --freezeParameters g --redefineSignalPOIs r --X-rtd MINIMIZER_analytic -n r_floating'.format(filename))
+syscall('combine {} -M Significance --rMax=3. --cminPreScan --setParameters g=1.0 --freezeParameters g --redefineSignalPOIs r --X-rtd MINIMIZER_analytic -n r_floating'.format(filename))
 sig_r = get_sig_from_file('higgsCombiner_floating.Significance.mH120.root')
 
 syscall('combine -M MultiDimFit {} --algo=grid -P g --points=61 --robustFit=1 --rMax=3. --alignEdges 1 --setParameterRanges g=0.,3. --freezeParameters r --X-rtd MINIMIZER_analytic --setParameters r=1.0 -n grid_g_floating'.format(filename))
@@ -52,7 +52,7 @@ syscall('combine -M MultiDimFit {} --algo=grid -P r --points=61 --robustFit=1 --
 sig_r_scan = get_sig_from_scan_file('higgsCombinegrid_r_floating.MultiDimFit.mH120.root', 'r')
 
 
-vals_list = [tuple([args.parity, args.mass, args.width, sig_g, sig_r, sig_g_scan, sig_r_scan])]
+vals_list = [tuple([args.parity, int(args.mass), float(args.width.replace('p', '.')), sig_g, sig_r, sig_g_scan, sig_r_scan])]
 
 with open(args.out, 'wb') as out:
     arr = np.array(

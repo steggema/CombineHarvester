@@ -141,7 +141,7 @@ if __name__ == '__main__':
                 )
                 match = sgn_name_regex.match(sgn_nominal_name)
                 width_old = match.group(4)
-                width = float(width_old.replace('p', '.'))
+                width = float(width_old.replace('p', '.')) if 'p' in width_old else int(width_old)
                 av_widths = [2.5, 5, 10, 25, 50]
                 if width not in av_widths:
                     width = [w for w in av_widths if w>width][0] # first item larger than width under consideration
@@ -150,12 +150,13 @@ if __name__ == '__main__':
                 av_masses = [400, 500, 600, 750]
                 if mass not in av_masses:
                     mass = [m for m in av_masses if m - mass > -50][0] # roughly closest mass
-                sgn_name_new = sgn_nominal_name.replace(width_old, str(width).replace('.', 'p')).replace(mass_old, str(mass))
+                new_width_name = str(width).replace('.', 'p')
+                sgn_name_new = sgn_nominal_name.replace(mass_old, str(mass)).replace(width_old+'pc', new_width_name+'pc')
                 try:
                     bandwidth = bandwidths[sgn_name_new, syst_name]
                 except KeyError:
-                    raise KeyError('No bandwidth found for template "{}" variation "{}".'.format(
-                        sgn_nominal_name, syst_name
+                    raise KeyError('No bandwidth found for template "{}" variation "{}", original name {}.'.format(
+                        sgn_name_new, syst_name, sgn_nominal_name
                     ))
             
             
