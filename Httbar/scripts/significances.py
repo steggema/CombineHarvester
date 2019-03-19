@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
-import numpy as np
 from argparse import ArgumentParser
+import numpy as np
 from ROOT import TFile
 
 
@@ -11,6 +11,11 @@ def syscall(cmd):
     if retval != 0:
         raise RuntimeError('Command failed!')
 
+def get_g_from_file(f_name):
+    f = TFile.Open(f_name)
+    sig_tree = f.Get('limit')
+    for entry in sig_tree:
+        return entry.g
 
 def get_sig_from_file(f_name):
     f = TFile.Open(f_name)
@@ -37,10 +42,14 @@ parser.add_argument('width')
 args = parser.parse_args()
 filename = args.filename
 
+
+syscall('combine -M MultiDimFit {} --robustFit=1 --alignEdges 1 --setParameterRanges g=0.,3. --freezeParameters r --X-rtd MINIMIZER_analytic --setParameters r=1.0 --cminPreScan'.format(filename))
+fitted_g = get_g_from_file('higgsCombineTest.MultiDimFit.mH120.root')
+
 syscall('combine {} -M Significance --rMax=3. --cminPreScan --setParameters r=1.0 --freezeParameters r --redefineSignalPOIs g --X-rtd MINIMIZER_analytic -n g_floating'.format(filename))
 sig_g = get_sig_from_file('higgsCombineg_floating.Significance.mH120.root')
 
-syscall('combine {} -M Significance --rMax=3. --cminPreScan --setParameters g=1.0 --freezeParameters g --redefineSignalPOIs r --X-rtd MINIMIZER_analytic -n r_floating'.format(filename))
+syscall('combine {} -M Significance --rMax=3. --cminPreScan --setParameters g={} --freezeParameters g --redefineSignalPOIs r --X-rtd MINIMIZER_analytic -n r_floating'.format(filename, fitted_g))
 sig_r = get_sig_from_file('higgsCombiner_floating.Significance.mH120.root')
 
 syscall('combine -M MultiDimFit {} --algo=grid -P g --points=61 --robustFit=1 --rMax=3. --alignEdges 1 --setParameterRanges g=0.,3. --freezeParameters r --X-rtd MINIMIZER_analytic --setParameters r=1.0 -n grid_g_floating'.format(filename))

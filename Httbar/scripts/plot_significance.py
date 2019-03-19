@@ -276,8 +276,8 @@ for parity in ['A', 'H']:
         subset = limits[limits['parity'] == parity]
         subset.sort(order=('width', 'mass'))
         
-        x_min = subset['mass'].min() - 25.
-        x_max = subset['mass'].max() + 25.
+        x_min = subset['mass'].min() - 12.5
+        x_max = subset['mass'].max() + 12.5
         y_min = subset['width'].min() #FIXME: add observed
         y_max = subset['width'].max()
         
@@ -287,12 +287,10 @@ for parity in ['A', 'H']:
             ticker.FormatStrFormatter("%d")
             )
         #hardcoded
-        all_masses = np.array(masses+[800.])-25.#/2
+        all_masses = np.array(masses+[775.])-12.5#/2
         all_widths = [0.075]+[(widths[i]+widths[i-1])/2 for i in range(1, len(widths))]+[100]
         X,Y = np.meshgrid(all_masses, all_widths)
-        
 
-        import pdb; pdb.set_trace()
         Z = subset[style].reshape((len(widths), len(masses)))
         #add one row/column
         Z = np.hstack((
