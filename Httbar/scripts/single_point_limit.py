@@ -33,6 +33,9 @@ parser.add_argument('--runScan', action='store_true', help='run scan of Asymptot
 parser.add_argument('--twoPars', action='store_true', help='add both regular signal strength and coupling modifier to model')
 parser.add_argument('--barlowBeeston', action='store_true', help='use Barlow-Beeston instead of separate MC statistical uncertainties')
 parser.add_argument('--significance', action='store_true', help='calculate significances')
+parser.add_argument('--significance_toys', action='store_true', help='calculate significances based on pre-saved toys')
+parser.add_argument('--significance_toys_bunch', default=0, help='bunch for toy significance calculation')
+parser.add_argument('--skip_limit', action='store_true', help='skip limit calculation')
 args = parser.parse_args()
 
 val2name = lambda x: str(x).replace('.','p').replace('p0','')
@@ -75,52 +78,57 @@ syscall((
 		args.parity, val2name(args.width), interference
 		))
 
-print '\n\nRunning LIMIT\n\n'
-if not args.runScan:
-	syscall((
-			'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
-			' -n .limit'
-			' --rMin=0 --rMax=3 --rRelAcc 0.001 --cminPreScan --parallel 1 {} {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, 
-			'' if args.noblind else '--run blind -t -1',
-			'--X-rtd MINIMIZER_analytic' if args.barlowBeeston else ''
-			))
-
-	syscall((
-			'combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits'
-			'.mH[0-9][0-9][0-9].root'
-			))
-	fname = '%s_%d_%.1f.json' % (args.parity, args.mass, args.width)
-	if args.extern:
-		fname = fname.replace('.json', '_%s.json' % args.extern)
-	shutil.move('limits.json', fname)
-else:
-		if not args.twoPars:
-			syscall((
+if not args.skip_limit:
+	print '\n\nRunning LIMIT\n\n'
+	if not args.runScan:
+		syscall((
 				'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
 				' -n .limit'
-				' --rMin=0 --rMax=3 --rRelAcc 0.001 --parallel 8  --singlePoint 0.:3.:0.03 --cminPreScan {} {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, 
+				' --rMin=0 --rMax=3 --rRelAcc 0.001 --cminPreScan --parallel 1 {} {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, 
 				'' if args.noblind else '--run blind -t -1',
 				'--X-rtd MINIMIZER_analytic' if args.barlowBeeston else ''
 				))
-			syscall((
+
+		syscall((
+				'combineTool.py -M CollectLimits */*/higgsCombine.limit.AsymptoticLimits'
+				'.mH[0-9][0-9][0-9].root'
+				))
+		fname = '%s_%d_%.1f.json' % (args.parity, args.mass, args.width)
+		if args.extern:
+			fname = fname.replace('.json', '_%s.json' % args.extern)
+		shutil.move('limits.json', fname)
+	else:
+			if not args.twoPars:
+				syscall((
+					'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
+					' -n .limit'
+					' --rMin=0 --rMax=3 --rRelAcc 0.001 --parallel 8  --singlePoint 0.:3.:0.03 --cminPreScan {} {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, 
+					'' if args.noblind else '--run blind -t -1',
+					'--X-rtd MINIMIZER_analytic' if args.barlowBeeston else ''
+					))
+				syscall((
+					'hadd {par}_{m}_{wid}_limits_gathered.root {par}_{wid}/{m}/higgsCombine.limit*POINT*AsymptoticLimits*.root'.format(
+					par=args.parity, wid=val2name(args.width), m=args.mass)
+					))
+			else:
+				for point in [0.01*i for i in xrange(int(3./0.01)+1)]:
+					syscall((
+					'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
+					' -n .limitscan.POINT.{} --setParameters g={} --freezeParameters g '
+					' --rMin=0 --rMax=2.4 --rRelAcc 0.001 --picky --singlePoint 1. --cminPreScan {} {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, point, point,
+					'' if args.noblind else '--run blind -t -1',
+					'--X-rtd MINIMIZER_analytic' if args.barlowBeeston else ''
+					))
+				syscall((
 				'hadd {par}_{m}_{wid}_limits_gathered.root {par}_{wid}/{m}/higgsCombine.limit*POINT*AsymptoticLimits*.root'.format(
 				par=args.parity, wid=val2name(args.width), m=args.mass)
 				))
-		else:
-			for point in [0.01*i for i in xrange(int(3./0.01)+1)]:
-				syscall((
-				'combineTool.py -M AsymptoticLimits -d {}/{}/workspace.root --there'
-				' -n .limitscan.POINT.{} --setParameters g={} --freezeParameters g '
-				' --rMin=0 --rMax=2.4 --rRelAcc 0.001 --picky --singlePoint 1. --cminPreScan {} {}').format('_'.join([args.parity, val2name(args.width)]), args.mass, point, point,
-				'' if args.noblind else '--run blind -t -1',
-				'--X-rtd MINIMIZER_analytic' if args.barlowBeeston else ''
-				))
-			syscall((
-			'hadd {par}_{m}_{wid}_limits_gathered.root {par}_{wid}/{m}/higgsCombine.limit*POINT*AsymptoticLimits*.root'.format(
-			par=args.parity, wid=val2name(args.width), m=args.mass)
-			))
+
 if args.significance:
-	syscall('significances.py {d}/{m}/workspace.root {par}_{m}_{wid}_sig.pynb {par} {m} {wid}'.format(d='_'.join([args.parity, val2name(args.width)]), par=args.parity, wid=val2name(args.width), m=args.mass))
+	syscall('significances.py {d}/{m}/workspace.root {par}_{m}_{wid}_sig.npy {par} {m} {wid}'.format(d='_'.join([args.parity, val2name(args.width)]), par=args.parity, wid=val2name(args.width), m=args.mass))
+
+if args.significance_toys:
+	syscall('significances_toy.py {d}/{m}/workspace.root {toy_dir} {b} {par}_{m}_{wid}_sig_toys_{b}.npy {par} {m} {wid}'.format(d='_'.join([args.parity, val2name(args.width)]), par=args.parity, wid=val2name(args.width), m=args.mass, b=args.significance_toys_bunch, toy_dir='/afs/cern.ch/user/s/steggema/work/stats/CMSSW_8_1_0/src/CombineHarvester/Httbar/results_v5/input_toys_nonfreq'))
 
 
 if not args.keep:
